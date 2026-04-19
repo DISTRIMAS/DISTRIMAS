@@ -2,11 +2,13 @@
 import { useEffect, useState, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { Cliente } from "@/lib/types"
+import { useTheme } from "@/lib/theme-context"
 import * as XLSX from "xlsx"
 
 const EMPTY: Partial<Cliente> = { codigo: "", nombre: "", municipio: "", barrio: "", direccion: "", telefono: "", activo: true }
 
 export default function ClientesPage() {
+  const theme = useTheme()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
@@ -95,21 +97,21 @@ export default function ClientesPage() {
   )
 
   const f = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }))
-  const inp = { background: "#1E2330", border: "1.5px solid rgba(255,255,255,0.07)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "10px 12px", outline: "none", width: "100%", boxSizing: "border-box" as const }
-  const lbl = { display: "block", fontSize: "11px", fontWeight: "bold" as const, color: "#8B91A8", textTransform: "uppercase" as const, letterSpacing: "0.7px", marginBottom: "6px" }
+  const inp = { background: theme.cardAlt, border: `1.5px solid ${theme.border}`, borderRadius: "8px", color: theme.text, fontSize: "14px", padding: "10px 12px", outline: "none", width: "100%", boxSizing: "border-box" as const }
+  const lbl = { display: "block", fontSize: "11px", fontWeight: "bold" as const, color: theme.muted, textTransform: "uppercase" as const, letterSpacing: "0.7px", marginBottom: "6px" }
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+      <div className="page-header">
         <div>
-          <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 4px" }}>Clientes</h2>
-          <p style={{ color: "#8B91A8", fontSize: "13px", margin: 0 }}>{clientes.filter(c => c.activo).length} activos de {clientes.length} total</p>
+          <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 4px", color: theme.text }}>Clientes</h2>
+          <p style={{ color: theme.muted, fontSize: "13px", margin: 0 }}>{clientes.filter(c => c.activo).length} activos de {clientes.length} total</p>
         </div>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button onClick={exportarExcel} style={{ padding: "10px 16px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontWeight: 600, fontSize: "13px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
+        <div className="page-header-btns">
+          <button onClick={exportarExcel} style={{ padding: "10px 16px", background: theme.cardAlt, color: theme.text, fontWeight: 600, fontSize: "13px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>
             Exportar Excel
           </button>
-          <label style={{ padding: "10px 16px", background: "rgba(34,197,94,0.12)", color: "#22c55e", fontWeight: 600, fontSize: "13px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
+          <label style={{ padding: "10px 16px", background: "rgba(34,197,94,0.12)", color: "#22c55e", fontWeight: 600, fontSize: "13px", borderRadius: "8px", border: "none", cursor: "pointer", display: "inline-block" }}>
             {importando ? "Importando..." : "Importar Excel"}
             <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={importarExcel} style={{ display: "none" }} />
           </label>
@@ -125,54 +127,56 @@ export default function ClientesPage() {
         </div>
       )}
 
-      <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
-        <input value={buscar} onChange={e => setBuscar(e.target.value)} placeholder="Buscar por nombre, código o municipio..." style={{ ...inp, width: "340px" }} />
+      <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+        <input value={buscar} onChange={e => setBuscar(e.target.value)} placeholder="Buscar por nombre, código o municipio..." style={{ ...inp, maxWidth: "340px" }} />
       </div>
 
-      <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-              {["Código", "Nombre", "Municipio", "Barrio", "Teléfono", "Estado", "Acciones"].map(h => (
-                <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", fontWeight: "bold", color: "#8B91A8", textTransform: "uppercase", letterSpacing: "0.7px" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "#555C74" }}>Cargando...</td></tr>
-            ) : filtrados.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "#555C74" }}>No hay clientes</td></tr>
-            ) : filtrados.map(c => (
-              <tr key={c.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <td style={{ padding: "12px 16px", fontSize: "13px", color: "#8B91A8", fontFamily: "monospace" }}>{c.codigo}</td>
-                <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 500 }}>{c.nombre}</td>
-                <td style={{ padding: "12px 16px", fontSize: "13px", color: "#8B91A8" }}>{c.municipio}</td>
-                <td style={{ padding: "12px 16px", fontSize: "13px", color: "#8B91A8" }}>{c.barrio}</td>
-                <td style={{ padding: "12px 16px", fontSize: "13px", color: "#8B91A8" }}>{c.telefono}</td>
-                <td style={{ padding: "12px 16px" }}>
-                  <span style={{ padding: "3px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600, background: c.activo ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.06)", color: c.activo ? "#22c55e" : "#8B91A8" }}>
-                    {c.activo ? "Activo" : "Inactivo"}
-                  </span>
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button onClick={() => abrir(c)} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Editar</button>
-                    <button onClick={() => toggleActivo(c)} style={{ padding: "6px 12px", background: c.activo ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)", color: c.activo ? "#f59e0b" : "#22c55e", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
-                      {c.activo ? "Desactivar" : "Activar"}
-                    </button>
-                  </div>
-                </td>
+      <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", overflow: "hidden" }}>
+        <div className="tabla-wrap">
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                {["Código", "Nombre", "Municipio", "Barrio", "Teléfono", "Estado", "Acciones"].map(h => (
+                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", fontWeight: "bold", color: theme.muted, textTransform: "uppercase", letterSpacing: "0.7px", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: theme.muted }}>Cargando...</td></tr>
+              ) : filtrados.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: theme.muted }}>No hay clientes</td></tr>
+              ) : filtrados.map(c => (
+                <tr key={c.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: theme.muted, fontFamily: "monospace" }}>{c.codigo}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 500, color: theme.text }}>{c.nombre}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: theme.muted }}>{c.municipio}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: theme.muted }}>{c.barrio}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: theme.muted }}>{c.telefono}</td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <span style={{ padding: "3px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600, background: c.activo ? "rgba(34,197,94,0.12)" : theme.cardAlt, color: c.activo ? "#22c55e" : theme.muted }}>
+                      {c.activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <div className="acciones-wrap">
+                      <button onClick={() => abrir(c)} style={{ padding: "6px 12px", background: theme.cardAlt, color: theme.text, fontSize: "12px", borderRadius: "6px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Editar</button>
+                      <button onClick={() => toggleActivo(c)} style={{ padding: "6px 12px", background: c.activo ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)", color: c.activo ? "#f59e0b" : "#22c55e", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
+                        {c.activo ? "Desactivar" : "Activar"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "480px" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 24px" }}>{editando ? "Editar cliente" : "Nuevo cliente"}</h3>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div className="modal-padding" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "480px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 24px", color: theme.text }}>{editando ? "Editar cliente" : "Nuevo cliente"}</h3>
             {error && <div style={{ background: "rgba(215,38,56,0.1)", border: "1px solid rgba(215,38,56,0.25)", color: "#F04455", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
             <div style={{ display: "grid", gap: "14px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px" }}>
@@ -185,12 +189,12 @@ export default function ClientesPage() {
               </div>
               <div><label style={lbl}>Dirección</label><input style={inp} value={form.direccion} onChange={e => f("direccion", e.target.value)} placeholder="Cra 15 # 23-10" /></div>
               <div><label style={lbl}>Teléfono</label><input style={inp} value={form.telefono} onChange={e => f("telefono", e.target.value)} placeholder="315..." /></div>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer", color: theme.text }}>
                 <input type="checkbox" checked={form.activo} onChange={e => f("activo", e.target.checked)} /> Activo
               </label>
             </div>
             <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-              <button onClick={cerrar} style={{ flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={cerrar} style={{ flex: 1, padding: "11px", background: theme.cardAlt, color: theme.text, fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Cancelar</button>
               <button onClick={guardar} disabled={saving} style={{ flex: 1, padding: "11px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Guardando..." : editando ? "Guardar cambios" : "Crear cliente"}
               </button>

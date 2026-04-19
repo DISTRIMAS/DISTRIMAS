@@ -1,10 +1,12 @@
-﻿"use client"
+"use client"
 import { useEffect, useState } from "react"
 import { getSession } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
 import { Usuario } from "@/lib/types"
+import { useTheme } from "@/lib/theme-context"
 
 export default function DashboardPage() {
+  const theme = useTheme()
   const [user, setUser] = useState<Usuario | null>(null)
   const [stats, setStats] = useState({ pedidosHoy: 0, tiendasActivas: 0, productosStockBajo: 0, totalMes: 0 })
   const [loading, setLoading] = useState(true)
@@ -41,21 +43,21 @@ export default function DashboardPage() {
   return (
     <div>
       <div style={{ marginBottom: "28px" }}>
-        <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: "0 0 6px" }}>Hola, {user?.nombre?.split(" ")[0]}</h2>
-        <p style={{ color: "#8B91A8", fontSize: "14px", margin: 0 }}>{isAdmin ? "Aqui tienes el resumen del sistema" : "Aqui tienes tu actividad del dia"}</p>
+        <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: "0 0 6px", color: theme.text }}>Hola, {user?.nombre?.split(" ")[0]}</h2>
+        <p style={{ color: theme.muted, fontSize: "14px", margin: 0 }}>{isAdmin ? "Aqui tienes el resumen del sistema" : "Aqui tienes tu actividad del dia"}</p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "16px", marginBottom: "32px" }}>
+      <div className="cards-grid" style={{ marginBottom: "32px" }}>
         {cards.map((card, i) => (
-          <div key={i} style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", padding: "22px" }}>
+          <div key={i} style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "22px" }}>
             <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: card.bg, marginBottom: "14px" }} />
-            <div style={{ fontSize: "30px", fontWeight: "bold", marginBottom: "4px" }}>{loading ? "-" : card.value}</div>
-            <div style={{ fontSize: "13px", color: "#8B91A8" }}>{card.label}</div>
+            <div style={{ fontSize: "30px", fontWeight: "bold", marginBottom: "4px", color: theme.text }}>{loading ? "-" : card.value}</div>
+            <div style={{ fontSize: "13px", color: theme.muted }}>{card.label}</div>
             {"delta" in card && card.delta && <div style={{ fontSize: "12px", color: card.dc, marginTop: "6px" }}>{card.delta}</div>}
           </div>
         ))}
       </div>
-      <p style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "16px" }}>{isAdmin ? "Resumen del sistema" : "Mi actividad"}</p>
-      <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", padding: "56px", textAlign: "center", color: "#555C74" }}>
+      <p style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "16px", color: theme.text }}>{isAdmin ? "Resumen del sistema" : "Mi actividad"}</p>
+      <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "56px", textAlign: "center", color: theme.muted }}>
         <p style={{ fontSize: "14px", margin: 0 }}>{isAdmin ? "Aqui iran las graficas y estadisticas completas" : "Aqui veras tus pedidos recientes"}</p>
       </div>
     </div>

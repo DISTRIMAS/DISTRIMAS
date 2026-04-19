@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Perfil, Permisos, AccionesModulo } from "@/lib/types"
+import { useTheme } from "@/lib/theme-context"
 
 const MODULOS: { key: keyof Permisos; label: string; acciones: (keyof AccionesModulo)[] }[] = [
   { key: "dashboard",   label: "Dashboard",    acciones: ["ver"] },
@@ -27,6 +28,7 @@ const PERMISOS_ADMIN = (): Permisos => Object.fromEntries(
 ) as unknown as Permisos
 
 export default function PerfilesPage() {
+  const theme = useTheme()
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
@@ -124,15 +126,15 @@ export default function PerfilesPage() {
     }
   }
 
-  const inp = { background: "#1E2330", border: "1.5px solid rgba(255,255,255,0.07)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "10px 12px", outline: "none", width: "100%", boxSizing: "border-box" as const }
-  const lbl = { display: "block", fontSize: "11px", fontWeight: "bold" as const, color: "#8B91A8", textTransform: "uppercase" as const, letterSpacing: "0.7px", marginBottom: "6px" }
+  const inp = { background: theme.cardAlt, border: `1.5px solid ${theme.border}`, borderRadius: "8px", color: theme.text, fontSize: "14px", padding: "10px 12px", outline: "none", width: "100%", boxSizing: "border-box" as const }
+  const lbl = { display: "block", fontSize: "11px", fontWeight: "bold" as const, color: theme.muted, textTransform: "uppercase" as const, letterSpacing: "0.7px", marginBottom: "6px" }
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+      <div className="page-header">
         <div>
-          <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 4px" }}>Perfiles y permisos</h2>
-          <p style={{ color: "#8B91A8", fontSize: "13px", margin: 0 }}>{perfiles.length} perfiles configurados</p>
+          <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 4px", color: theme.text }}>Perfiles y permisos</h2>
+          <p style={{ color: theme.muted, fontSize: "13px", margin: 0 }}>{perfiles.length} perfiles configurados</p>
         </div>
         <button onClick={() => abrir()} style={{ padding: "10px 20px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
           + Nuevo perfil
@@ -140,29 +142,28 @@ export default function PerfilesPage() {
       </div>
 
       {loading ? (
-        <div style={{ padding: "40px", textAlign: "center", color: "#555C74" }}>Cargando...</div>
+        <div style={{ padding: "40px", textAlign: "center", color: theme.muted }}>Cargando...</div>
       ) : (
         <div style={{ display: "grid", gap: "16px" }}>
           {perfiles.map(p => (
-            <div key={p.id} style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", padding: "24px" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
+            <div key={p.id} style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "24px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
                 <div>
-                  <p style={{ fontWeight: "bold", fontSize: "16px", margin: "0 0 4px" }}>{p.nombre}</p>
-                  <p style={{ color: "#8B91A8", fontSize: "13px", margin: 0 }}>{p.descripcion || "Sin descripción"}</p>
+                  <p style={{ fontWeight: "bold", fontSize: "16px", margin: "0 0 4px", color: theme.text }}>{p.nombre}</p>
+                  <p style={{ color: theme.muted, fontSize: "13px", margin: 0 }}>{p.descripcion || "Sin descripción"}</p>
                 </div>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <button onClick={() => abrir(p)} style={{ padding: "7px 14px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontSize: "13px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Editar</button>
+                <div className="acciones-wrap">
+                  <button onClick={() => abrir(p)} style={{ padding: "7px 14px", background: theme.cardAlt, color: theme.text, fontSize: "13px", borderRadius: "6px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Editar</button>
                   <button onClick={() => eliminar(p.id)} style={{ padding: "7px 14px", background: "rgba(215,38,56,0.1)", color: "#F04455", fontSize: "13px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Eliminar</button>
                 </div>
               </div>
-              {/* Tabla resumen de permisos */}
-              <div style={{ overflowX: "auto" }}>
+              <div className="tabla-wrap">
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                      <th style={{ padding: "6px 12px", textAlign: "left", color: "#8B91A8", fontWeight: 600, width: "130px" }}>Módulo</th>
+                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                      <th style={{ padding: "6px 12px", textAlign: "left", color: theme.muted, fontWeight: 600, width: "130px" }}>Módulo</th>
                       {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
-                        <th key={a} style={{ padding: "6px 8px", textAlign: "center", color: "#8B91A8", fontWeight: 600 }}>{ACCIONES_LABELS[a]}</th>
+                        <th key={a} style={{ padding: "6px 8px", textAlign: "center", color: theme.muted, fontWeight: 600 }}>{ACCIONES_LABELS[a]}</th>
                       ))}
                     </tr>
                   </thead>
@@ -170,13 +171,13 @@ export default function PerfilesPage() {
                     {MODULOS.map(m => {
                       const mp = (p.permisos as unknown as Record<string, Record<string, boolean>>)[m.key] || {}
                       return (
-                        <tr key={m.key} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                          <td style={{ padding: "6px 12px", fontWeight: 600, color: "#F0F2F7" }}>{m.label}</td>
+                        <tr key={m.key} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                          <td style={{ padding: "6px 12px", fontWeight: 600, color: theme.text }}>{m.label}</td>
                           {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
                             <td key={a} style={{ padding: "6px 8px", textAlign: "center" }}>
                               {m.acciones.includes(a)
-                                ? <span style={{ color: mp[a] ? "#22c55e" : "#2A3044", fontSize: "16px" }}>{mp[a] ? "✓" : "·"}</span>
-                                : <span style={{ color: "#1E2330" }}>—</span>}
+                                ? <span style={{ color: mp[a] ? "#22c55e" : theme.border, fontSize: "16px" }}>{mp[a] ? "✓" : "·"}</span>
+                                : <span style={{ color: theme.cardAlt }}>—</span>}
                             </td>
                           ))}
                         </tr>
@@ -191,9 +192,9 @@ export default function PerfilesPage() {
       )}
 
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 20px" }}>{editando ? "Editar perfil" : "Nuevo perfil"}</h3>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div className="modal-padding" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 20px", color: theme.text }}>{editando ? "Editar perfil" : "Nuevo perfil"}</h3>
             {error && <div style={{ background: "rgba(215,38,56,0.1)", border: "1px solid rgba(215,38,56,0.25)", color: "#F04455", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
@@ -201,69 +202,69 @@ export default function PerfilesPage() {
               <div><label style={lbl}>Descripción</label><input style={inp} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Descripción breve" /></div>
             </div>
 
-            {/* Plantillas rápidas */}
             <div style={{ marginBottom: "20px" }}>
               <label style={lbl}>Plantilla rápida</label>
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {[
                   { key: "admin", label: "Acceso total", color: "#D72638" },
                   { key: "vendedor", label: "Vendedor estándar", color: "#60a5fa" },
-                  { key: "ninguno", label: "Sin permisos", color: "#555C74" },
+                  { key: "ninguno", label: "Sin permisos", color: theme.muted },
                 ].map(t => (
                   <button key={t.key} onClick={() => aplicarPlantilla(t.key as "admin" | "vendedor" | "ninguno")}
-                    style={{ padding: "7px 14px", background: "rgba(255,255,255,0.06)", color: t.color, fontSize: "13px", fontWeight: 600, borderRadius: "6px", border: `1px solid ${t.color}40`, cursor: "pointer" }}>
+                    style={{ padding: "7px 14px", background: theme.cardAlt, color: t.color, fontSize: "13px", fontWeight: 600, borderRadius: "6px", border: `1px solid ${t.color}40`, cursor: "pointer" }}>
                     {t.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Matriz de permisos */}
             <label style={lbl}>Permisos por módulo</label>
-            <div style={{ background: "#1E2330", borderRadius: "10px", overflow: "hidden", marginBottom: "24px" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#171B25" }}>
-                    <th style={{ padding: "10px 14px", textAlign: "left", fontSize: "11px", color: "#8B91A8", fontWeight: 700, textTransform: "uppercase", width: "140px" }}>Módulo</th>
-                    {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
-                      <th key={a} style={{ padding: "10px 8px", textAlign: "center", fontSize: "11px", color: "#8B91A8", fontWeight: 700, textTransform: "uppercase" }}>{ACCIONES_LABELS[a]}</th>
-                    ))}
-                    <th style={{ padding: "10px 8px", textAlign: "center", fontSize: "11px", color: "#8B91A8", fontWeight: 700, textTransform: "uppercase" }}>Todo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MODULOS.map((m, idx) => {
-                    const todasActivas = m.acciones.every(a => form.permisos[m.key][a])
-                    return (
-                      <tr key={m.key} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
-                        <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: "13px" }}>{m.label}</td>
-                        {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
-                          <td key={a} style={{ padding: "10px 8px", textAlign: "center" }}>
-                            {m.acciones.includes(a) ? (
-                              <div onClick={() => toggleAccion(m.key, a)}
-                                style={{ width: "22px", height: "22px", borderRadius: "6px", background: form.permisos[m.key][a] ? "#22c55e" : "#2A3044", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", transition: "background 0.15s" }}>
-                                {form.permisos[m.key][a] && <span style={{ color: "white", fontSize: "13px", fontWeight: "bold" }}>✓</span>}
-                              </div>
-                            ) : (
-                              <span style={{ color: "#2A3044", fontSize: "18px" }}>—</span>
-                            )}
+            <div style={{ background: theme.cardAlt, borderRadius: "10px", overflow: "hidden", marginBottom: "24px" }}>
+              <div className="tabla-wrap">
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${theme.border}`, background: theme.card }}>
+                      <th style={{ padding: "10px 14px", textAlign: "left", fontSize: "11px", color: theme.muted, fontWeight: 700, textTransform: "uppercase", width: "140px" }}>Módulo</th>
+                      {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
+                        <th key={a} style={{ padding: "10px 8px", textAlign: "center", fontSize: "11px", color: theme.muted, fontWeight: 700, textTransform: "uppercase" }}>{ACCIONES_LABELS[a]}</th>
+                      ))}
+                      <th style={{ padding: "10px 8px", textAlign: "center", fontSize: "11px", color: theme.muted, fontWeight: 700, textTransform: "uppercase" }}>Todo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MODULOS.map((m, idx) => {
+                      const todasActivas = m.acciones.every(a => form.permisos[m.key][a])
+                      return (
+                        <tr key={m.key} style={{ borderBottom: `1px solid ${theme.border}`, background: idx % 2 === 0 ? "transparent" : `${theme.border}` }}>
+                          <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: "13px", color: theme.text }}>{m.label}</td>
+                          {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
+                            <td key={a} style={{ padding: "10px 8px", textAlign: "center" }}>
+                              {m.acciones.includes(a) ? (
+                                <div onClick={() => toggleAccion(m.key, a)}
+                                  style={{ width: "22px", height: "22px", borderRadius: "6px", background: form.permisos[m.key][a] ? "#22c55e" : theme.border, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", transition: "background 0.15s" }}>
+                                  {form.permisos[m.key][a] && <span style={{ color: "white", fontSize: "13px", fontWeight: "bold" }}>✓</span>}
+                                </div>
+                              ) : (
+                                <span style={{ color: theme.border, fontSize: "18px" }}>—</span>
+                              )}
+                            </td>
+                          ))}
+                          <td style={{ padding: "10px 8px", textAlign: "center" }}>
+                            <div onClick={() => toggleModulo(m.key, m.acciones)}
+                              style={{ width: "22px", height: "22px", borderRadius: "6px", background: todasActivas ? "#D72638" : theme.border, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", transition: "background 0.15s" }}>
+                              {todasActivas && <span style={{ color: "white", fontSize: "13px", fontWeight: "bold" }}>✓</span>}
+                            </div>
                           </td>
-                        ))}
-                        <td style={{ padding: "10px 8px", textAlign: "center" }}>
-                          <div onClick={() => toggleModulo(m.key, m.acciones)}
-                            style={{ width: "22px", height: "22px", borderRadius: "6px", background: todasActivas ? "#D72638" : "#2A3044", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", transition: "background 0.15s" }}>
-                            {todasActivas && <span style={{ color: "white", fontSize: "13px", fontWeight: "bold" }}>✓</span>}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div style={{ display: "flex", gap: "12px" }}>
-              <button onClick={cerrar} style={{ flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={cerrar} style={{ flex: 1, padding: "11px", background: theme.cardAlt, color: theme.text, fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Cancelar</button>
               <button onClick={guardar} disabled={saving} style={{ flex: 1, padding: "11px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Guardando..." : editando ? "Guardar cambios" : "Crear perfil"}
               </button>

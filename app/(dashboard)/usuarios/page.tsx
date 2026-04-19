@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Usuario, Perfil } from "@/lib/types"
+import { useTheme } from "@/lib/theme-context"
 
 const EMPTY: Partial<Usuario> & { password_hash: string } = {
   nombre: "", documento: "", telefono: "", usuario: "", password_hash: "", perfil_id: "", activo: true, primer_ingreso: true
@@ -22,6 +23,7 @@ function getFortaleza(pass: string) {
 }
 
 export default function UsuariosPage() {
+  const theme = useTheme()
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,80 +100,82 @@ export default function UsuariosPage() {
   )
 
   const f = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }))
-  const inp = { background: "#1E2330", border: "1.5px solid rgba(255,255,255,0.07)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "10px 12px", outline: "none", width: "100%", boxSizing: "border-box" as const }
-  const lbl = { display: "block", fontSize: "11px", fontWeight: "bold" as const, color: "#8B91A8", textTransform: "uppercase" as const, letterSpacing: "0.7px", marginBottom: "6px" }
+  const inp = { background: theme.cardAlt, border: `1.5px solid ${theme.border}`, borderRadius: "8px", color: theme.text, fontSize: "14px", padding: "10px 12px", outline: "none", width: "100%", boxSizing: "border-box" as const }
+  const lbl = { display: "block", fontSize: "11px", fontWeight: "bold" as const, color: theme.muted, textTransform: "uppercase" as const, letterSpacing: "0.7px", marginBottom: "6px" }
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+      <div className="page-header">
         <div>
-          <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 4px" }}>Usuarios</h2>
-          <p style={{ color: "#8B91A8", fontSize: "13px", margin: 0 }}>{usuarios.length} usuarios registrados</p>
+          <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 4px", color: theme.text }}>Usuarios</h2>
+          <p style={{ color: theme.muted, fontSize: "13px", margin: 0 }}>{usuarios.length} usuarios registrados</p>
         </div>
         <button onClick={() => abrir()} style={{ padding: "10px 20px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
           + Nuevo usuario
         </button>
       </div>
 
-      <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
-        <input value={buscar} onChange={e => setBuscar(e.target.value)} placeholder="Buscar por nombre, usuario o documento..." style={{ ...inp, width: "320px" }} />
+      <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+        <input value={buscar} onChange={e => setBuscar(e.target.value)} placeholder="Buscar por nombre, usuario o documento..." style={{ ...inp, maxWidth: "320px" }} />
       </div>
 
-      <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-              {["Nombre", "Usuario", "Documento", "Teléfono", "Perfil", "Estado", "Acciones"].map(h => (
-                <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", fontWeight: "bold", color: "#8B91A8", textTransform: "uppercase", letterSpacing: "0.7px" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "#555C74", fontSize: "14px" }}>Cargando...</td></tr>
-            ) : filtrados.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: "#555C74", fontSize: "14px" }}>No hay usuarios</td></tr>
-            ) : filtrados.map(u => (
-              <tr key={u.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 500 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#D72638", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", fontSize: "13px", flexShrink: 0 }}>
-                      {u.nombre.charAt(0).toUpperCase()}
-                    </div>
-                    {u.nombre}
-                  </div>
-                </td>
-                <td style={{ padding: "12px 16px", fontSize: "13px", color: "#8B91A8" }}>{u.usuario}</td>
-                <td style={{ padding: "12px 16px", fontSize: "13px", color: "#8B91A8" }}>{u.documento}</td>
-                <td style={{ padding: "12px 16px", fontSize: "13px", color: "#8B91A8" }}>{u.telefono}</td>
-                <td style={{ padding: "12px 16px" }}>
-                  <span style={{ padding: "3px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600, background: "rgba(215,38,56,0.12)", color: "#D72638" }}>
-                    {u.perfil?.nombre || "-"}
-                  </span>
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <span style={{ padding: "3px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600, background: u.activo ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.06)", color: u.activo ? "#22c55e" : "#8B91A8" }}>
-                    {u.activo ? "Activo" : "Inactivo"}
-                  </span>
-                </td>
-                <td style={{ padding: "12px 16px" }}>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button onClick={() => abrir(u)} style={{ padding: "6px 12px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Editar</button>
-                    <button onClick={() => toggleActivo(u)} style={{ padding: "6px 12px", background: u.activo ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)", color: u.activo ? "#f59e0b" : "#22c55e", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
-                      {u.activo ? "Desactivar" : "Activar"}
-                    </button>
-                  </div>
-                </td>
+      <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", overflow: "hidden" }}>
+        <div className="tabla-wrap">
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                {["Nombre", "Usuario", "Documento", "Teléfono", "Perfil", "Estado", "Acciones"].map(h => (
+                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", fontWeight: "bold", color: theme.muted, textTransform: "uppercase", letterSpacing: "0.7px", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: theme.muted, fontSize: "14px" }}>Cargando...</td></tr>
+              ) : filtrados.length === 0 ? (
+                <tr><td colSpan={7} style={{ padding: "40px", textAlign: "center", color: theme.muted, fontSize: "14px" }}>No hay usuarios</td></tr>
+              ) : filtrados.map(u => (
+                <tr key={u.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                  <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 500, color: theme.text }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#D72638", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", fontSize: "13px", flexShrink: 0 }}>
+                        {u.nombre.charAt(0).toUpperCase()}
+                      </div>
+                      {u.nombre}
+                    </div>
+                  </td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: theme.muted }}>{u.usuario}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: theme.muted }}>{u.documento}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "13px", color: theme.muted }}>{u.telefono}</td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <span style={{ padding: "3px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600, background: "rgba(215,38,56,0.12)", color: "#D72638" }}>
+                      {u.perfil?.nombre || "-"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <span style={{ padding: "3px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600, background: u.activo ? "rgba(34,197,94,0.12)" : theme.cardAlt, color: u.activo ? "#22c55e" : theme.muted }}>
+                      {u.activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <div className="acciones-wrap">
+                      <button onClick={() => abrir(u)} style={{ padding: "6px 12px", background: theme.cardAlt, color: theme.text, fontSize: "12px", borderRadius: "6px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Editar</button>
+                      <button onClick={() => toggleActivo(u)} style={{ padding: "6px 12px", background: u.activo ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)", color: u.activo ? "#f59e0b" : "#22c55e", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>
+                        {u.activo ? "Desactivar" : "Activar"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "480px", maxHeight: "90vh", overflowY: "auto" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 24px" }}>{editando ? "Editar usuario" : "Nuevo usuario"}</h3>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div className="modal-padding" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "480px", maxHeight: "90vh", overflowY: "auto" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 24px", color: theme.text }}>{editando ? "Editar usuario" : "Nuevo usuario"}</h3>
             {error && <div style={{ background: "rgba(215,38,56,0.1)", border: "1px solid rgba(215,38,56,0.25)", color: "#F04455", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
             <div style={{ display: "grid", gap: "16px" }}>
               <div><label style={lbl}>Nombre completo</label><input style={inp} value={form.nombre} onChange={e => f("nombre", e.target.value)} placeholder="Ej: Juan Perez" /></div>
@@ -191,7 +195,7 @@ export default function UsuariosPage() {
                     placeholder="••••••••"
                   />
                   <button type="button" onClick={() => setVerPass(v => !v)}
-                    style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#8B91A8", fontSize: "16px", padding: 0 }}>
+                    style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: theme.muted, fontSize: "16px", padding: 0 }}>
                     {verPass ? "🙈" : "👁️"}
                   </button>
                 </div>
@@ -201,7 +205,7 @@ export default function UsuariosPage() {
                     <div style={{ marginTop: "10px" }}>
                       <div style={{ display: "flex", gap: "4px", marginBottom: "6px" }}>
                         {[1,2,3,4,5].map(i => (
-                          <div key={i} style={{ flex: 1, height: "4px", borderRadius: "99px", background: i <= score ? color : "#2A3044", transition: "background 0.2s" }} />
+                          <div key={i} style={{ flex: 1, height: "4px", borderRadius: "99px", background: i <= score ? color : theme.cardAlt, transition: "background 0.2s" }} />
                         ))}
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
@@ -215,7 +219,7 @@ export default function UsuariosPage() {
                           { ok: checks.numero,     label: "Número" },
                           { ok: checks.especial,   label: "Especial (!@#...)" },
                         ].map(c => (
-                          <span key={c.label} style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "99px", background: c.ok ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.05)", color: c.ok ? "#22c55e" : "#555C74" }}>
+                          <span key={c.label} style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "99px", background: c.ok ? "rgba(34,197,94,0.12)" : theme.cardAlt, color: c.ok ? "#22c55e" : theme.muted }}>
                             {c.ok ? "✓" : "✗"} {c.label}
                           </span>
                         ))}
@@ -232,18 +236,18 @@ export default function UsuariosPage() {
                 </select>
               </div>
               <div style={{ display: "flex", gap: "16px" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer", color: theme.text }}>
                   <input type="checkbox" checked={form.activo} onChange={e => f("activo", e.target.checked)} />
                   Activo
                 </label>
-                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer", color: theme.text }}>
                   <input type="checkbox" checked={form.primer_ingreso} onChange={e => f("primer_ingreso", e.target.checked)} />
                   Primer ingreso
                 </label>
               </div>
             </div>
             <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-              <button onClick={cerrar} style={{ flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={cerrar} style={{ flex: 1, padding: "11px", background: theme.cardAlt, color: theme.text, fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Cancelar</button>
               <button onClick={guardar} disabled={saving} style={{ flex: 1, padding: "11px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Guardando..." : editando ? "Guardar cambios" : "Crear usuario"}
               </button>

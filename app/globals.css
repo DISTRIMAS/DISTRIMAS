@@ -75,6 +75,18 @@ body {
   .stats-grid-3 { grid-template-columns: 1fr; }
 }
 
+/* Dashboard grids */
+.dash-mid   { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.dash-bot   { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; }
+
+@media (max-width: 1024px) {
+  .dash-bot { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .dash-mid { grid-template-columns: 1fr; }
+  .dash-bot { grid-template-columns: 1fr; }
+}
+
 /* Grids de formularios dentro de modales */
 .form-grid-2   { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }

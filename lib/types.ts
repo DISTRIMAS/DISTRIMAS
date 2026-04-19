@@ -1,0 +1,70 @@
+﻿export interface Permisos {
+  dashboard: boolean
+  pedidos: boolean
+  clientes: boolean
+  inventario: boolean
+  usuarios: boolean
+  perfiles: boolean
+  estadisticas: boolean
+}
+export interface Perfil {
+  id: string
+  nombre: string
+  descripcion: string
+  permisos: Permisos
+}
+export interface Usuario {
+  id: string
+  nombre: string
+  documento: string
+  telefono: string
+  usuario: string
+  perfil_id: string
+  activo: boolean
+  primer_ingreso: boolean
+  created_at: string
+  perfil?: Perfil
+}
+export interface Cliente {
+  id: string
+  codigo: string
+  nombre: string
+  municipio: string
+  barrio: string
+  direccion: string
+  telefono: string
+  activo: boolean
+  created_at: string
+}
+export interface Producto {
+  id: string
+  codigo: string
+  nombre: string
+  descripcion: string
+  unidad: string
+  precio: number
+  stock: number
+  stock_minimo: number
+  activo: boolean
+}
+export interface PedidoItem {
+  id: string
+  pedido_id: string
+  producto_id: string
+  cantidad: number
+  precio_unitario: number
+  subtotal: number
+  producto?: Producto
+}
+export interface Pedido {
+  id: string
+  cliente_id: string
+  usuario_id: string
+  estado: 'borrador' | 'confirmado' | 'entregado' | 'cancelado'
+  observaciones: string
+  total: number
+  created_at: string
+  cliente?: Cliente
+  usuario?: Usuario
+  items?: PedidoItem[]
+}

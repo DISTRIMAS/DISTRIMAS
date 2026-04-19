@@ -14,6 +14,8 @@ const COLOR_ESTADO: Record<string, { bg: string; color: string }> = {
   cancelado:  { bg: "rgba(215,38,56,0.15)",   color: "#D72638" },
 }
 
+function hoy() { return new Date().toISOString().split("T")[0] }
+
 export default function PedidosPage() {
   const theme = useTheme()
   const router = useRouter()
@@ -22,14 +24,26 @@ export default function PedidosPage() {
   const [buscar, setBuscar] = useState("")
   const [filtroEstado, setFiltroEstado] = useState<typeof ESTADOS[number]>("todos")
   const [detalle, setDetalle] = useState<Pedido | null>(null)
+  const [fechaIni, setFechaIni] = useState(hoy())
+  const [fechaFin, setFechaFin] = useState(hoy())
   const isAdmin = getSession()?.perfil?.nombre === "Administrador"
   const userId = getSession()?.id
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [fechaIni, fechaFin])
 
   async function load() {
     setLoading(true)
-    let q = supabase.from("pedidos").select("*, cliente:clientes(*), usuario:usuarios(nombre), items:pedido_items(*, producto:productos(nombre,unidad))").order("created_at", { ascending: false })
+    // fechaFin + 1 día para incluir todo ese día
+    const fin = new Date(fechaFin)
+    fin.setDate(fin.getDate() + 1)
+    const finStr = fin.toISOString().split("T")[0]
+
+    let q = supabase
+      .from("pedidos")
+      .select("*, cliente:clientes(*), usuario:usuarios(nombre), items:pedido_items(*, producto:productos(nombre,unidad))")
+      .gte("created_at", fechaIni)
+      .lt("created_at", finStr)
+      .order("created_at", { ascending: false })
     if (!isAdmin) q = q.eq("usuario_id", userId)
     const { data } = await q
     setPedidos(data || [])
@@ -49,25 +63,81 @@ export default function PedidosPage() {
     setDetalle(null); load()
   }
 
+  function irHoy() { setFechaIni(hoy()); setFechaFin(hoy()) }
+  function irSemana() {
+    const d = new Date()
+    const lunes = new Date(d)
+    lunes.setDate(d.getDate() - d.getDay() + 1)
+    setFechaIni(lunes.toISOString().split("T")[0])
+    setFechaFin(hoy())
+  }
+  function irMes() {
+    const d = new Date()
+    setFechaIni(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`)
+    setFechaFin(hoy())
+  }
+
   const filtrados = pedidos.filter(p => {
     const q = buscar.toLowerCase()
     const coincide = p.cliente?.nombre?.toLowerCase().includes(q) || p.id.includes(q)
     return coincide && (filtroEstado === "todos" || p.estado === filtroEstado)
   })
 
+  const esHoy = fechaIni === hoy() && fechaFin === hoy()
+  const inputFecha = {
+    background: theme.cardAlt,
+    border: `1.5px solid ${theme.border}`,
+    borderRadius: "8px",
+    color: theme.text,
+    fontSize: "13px",
+    padding: "7px 10px",
+    outline: "none",
+    cursor: "pointer",
+  }
+
   return (
     <div>
       <div className="page-header">
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 4px", color: theme.text }}>Pedidos</h2>
-          <p style={{ color: theme.muted, fontSize: "13px", margin: 0 }}>{pedidos.length} pedidos {!isAdmin ? "propios" : "en total"}</p>
+          <p style={{ color: theme.muted, fontSize: "13px", margin: 0 }}>
+            {filtrados.length} pedido{filtrados.length !== 1 ? "s" : ""} · {esHoy ? "Hoy" : `${fechaIni} → ${fechaFin}`}
+          </p>
         </div>
         <button onClick={() => router.push("/pedidos/nuevo")} style={{ padding: "10px 20px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
           + Nuevo pedido
         </button>
       </div>
 
-      <div className="filtros-wrap" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "14px 16px", marginBottom: "16px" }}>
+      {/* Filtro de fechas */}
+      <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "14px 16px", marginBottom: "12px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+          {/* Atajos rápidos */}
+          <div style={{ display: "flex", gap: "6px" }}>
+            {[
+              { label: "Hoy", fn: irHoy },
+              { label: "Esta semana", fn: irSemana },
+              { label: "Este mes", fn: irMes },
+            ].map(({ label, fn }) => (
+              <button key={label} onClick={fn}
+                style={{ padding: "6px 12px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "12px", fontWeight: 600, background: theme.cardAlt, color: theme.muted }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={{ width: "1px", height: "24px", background: theme.border }} />
+          {/* Rango manual */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <label style={{ fontSize: "12px", color: theme.muted, fontWeight: 600 }}>Desde</label>
+            <input type="date" value={fechaIni} max={fechaFin} onChange={e => setFechaIni(e.target.value)} style={inputFecha} />
+            <label style={{ fontSize: "12px", color: theme.muted, fontWeight: 600 }}>Hasta</label>
+            <input type="date" value={fechaFin} min={fechaIni} max={hoy()} onChange={e => setFechaFin(e.target.value)} style={inputFecha} />
+          </div>
+        </div>
+      </div>
+
+      {/* Búsqueda y estados */}
+      <div className="filtros-wrap" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "12px 16px", marginBottom: "14px" }}>
         <input value={buscar} onChange={e => setBuscar(e.target.value)} placeholder="Buscar cliente o ID..." style={{ background: theme.cardAlt, border: `1.5px solid ${theme.border}`, borderRadius: "8px", color: theme.text, fontSize: "14px", padding: "8px 12px", outline: "none", flex: "1", minWidth: "160px" }} />
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           {ESTADOS.map(e => (
@@ -78,6 +148,7 @@ export default function PedidosPage() {
         </div>
       </div>
 
+      {/* Tabla */}
       <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", overflow: "hidden" }}>
         <div className="tabla-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -92,7 +163,7 @@ export default function PedidosPage() {
               {loading ? (
                 <tr><td colSpan={6} style={{ padding: "40px", textAlign: "center", color: theme.muted }}>Cargando...</td></tr>
               ) : filtrados.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: "40px", textAlign: "center", color: theme.muted }}>No hay pedidos</td></tr>
+                <tr><td colSpan={6} style={{ padding: "40px", textAlign: "center", color: theme.muted }}>No hay pedidos en este período</td></tr>
               ) : filtrados.map(p => {
                 const col = COLOR_ESTADO[p.estado] || COLOR_ESTADO.borrador
                 return (
@@ -122,6 +193,7 @@ export default function PedidosPage() {
         </div>
       </div>
 
+      {/* Detalle modal */}
       {detalle && (
         <div className="modal-overlay" onClick={() => setDetalle(null)}>
           <div className="modal-box" style={{ background: theme.card, border: `1px solid ${theme.border}`, padding: "24px", maxWidth: "560px" }} onClick={e => e.stopPropagation()}>

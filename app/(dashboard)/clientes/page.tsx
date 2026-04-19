@@ -174,16 +174,16 @@ export default function ClientesPage() {
       </div>
 
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div className="modal-padding" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "480px" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 24px", color: theme.text }}>{editando ? "Editar cliente" : "Nuevo cliente"}</h3>
-            {error && <div style={{ background: "rgba(215,38,56,0.1)", border: "1px solid rgba(215,38,56,0.25)", color: "#F04455", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ background: theme.card, border: `1px solid ${theme.border}`, padding: "24px", maxWidth: "480px" }}>
+            <h3 style={{ fontSize: "17px", fontWeight: "bold", margin: "0 0 20px", color: theme.text }}>{editando ? "Editar cliente" : "Nuevo cliente"}</h3>
+            {error && <div style={{ background: "rgba(215,38,56,0.1)", border: "1px solid rgba(215,38,56,0.25)", color: "#D72638", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
             <div style={{ display: "grid", gap: "14px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px" }}>
+              <div className="form-grid-1-2">
                 <div><label style={lbl}>Código</label><input style={inp} value={form.codigo} onChange={e => f("codigo", e.target.value)} placeholder="CLI-001" /></div>
                 <div><label style={lbl}>Nombre</label><input style={inp} value={form.nombre} onChange={e => f("nombre", e.target.value)} placeholder="Tienda El Paisa" /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div className="form-grid-2">
                 <div><label style={lbl}>Municipio</label><input style={inp} value={form.municipio} onChange={e => f("municipio", e.target.value)} placeholder="Bucaramanga" /></div>
                 <div><label style={lbl}>Barrio</label><input style={inp} value={form.barrio} onChange={e => f("barrio", e.target.value)} placeholder="La Concordia" /></div>
               </div>
@@ -193,7 +193,7 @@ export default function ClientesPage() {
                 <input type="checkbox" checked={form.activo} onChange={e => f("activo", e.target.checked)} /> Activo
               </label>
             </div>
-            <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+            <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
               <button onClick={cerrar} style={{ flex: 1, padding: "11px", background: theme.cardAlt, color: theme.text, fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Cancelar</button>
               <button onClick={guardar} disabled={saving} style={{ flex: 1, padding: "11px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Guardando..." : editando ? "Guardar cambios" : "Crear cliente"}

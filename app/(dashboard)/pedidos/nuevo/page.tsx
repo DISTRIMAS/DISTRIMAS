@@ -106,7 +106,7 @@ export default function NuevoPedidoPage() {
   const dropdownStyle = { position: "absolute" as const, top: "100%", left: 0, right: 0, background: theme.cardAlt, border: `1px solid ${theme.border}`, borderRadius: "8px", zIndex: 50, maxHeight: "220px", overflowY: "auto" as const, marginTop: "4px" }
 
   return (
-    <div style={{ maxWidth: "800px" }}>
+    <div style={{ maxWidth: "720px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "28px" }}>
         <button onClick={() => router.push("/pedidos")} style={{ padding: "8px 14px", background: theme.cardAlt, color: theme.muted, fontSize: "13px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>← Volver</button>
         <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: theme.text }}>{modoEdicion ? "Editar pedido" : "Nuevo pedido"}</h2>

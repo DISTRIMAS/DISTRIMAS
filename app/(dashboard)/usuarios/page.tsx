@@ -7,6 +7,20 @@ const EMPTY: Partial<Usuario> & { password_hash: string } = {
   nombre: "", documento: "", telefono: "", usuario: "", password_hash: "", perfil_id: "", activo: true, primer_ingreso: true
 }
 
+function getFortaleza(pass: string) {
+  const checks = {
+    longitud: pass.length >= 8,
+    mayuscula: /[A-Z]/.test(pass),
+    minuscula: /[a-z]/.test(pass),
+    numero: /[0-9]/.test(pass),
+    especial: /[^A-Za-z0-9]/.test(pass),
+  }
+  const score = Object.values(checks).filter(Boolean).length
+  const nivel = score <= 2 ? "Débil" : score === 3 ? "Regular" : score === 4 ? "Buena" : "Fuerte"
+  const color = score <= 2 ? "#F04455" : score === 3 ? "#f59e0b" : score === 4 ? "#60a5fa" : "#22c55e"
+  return { checks, score, nivel, color }
+}
+
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
@@ -17,6 +31,7 @@ export default function UsuariosPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [buscar, setBuscar] = useState("")
+  const [verPass, setVerPass] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -164,9 +179,50 @@ export default function UsuariosPage() {
                 <div><label style={lbl}>Documento</label><input style={inp} value={form.documento} onChange={e => f("documento", e.target.value)} placeholder="CC / NIT" /></div>
                 <div><label style={lbl}>Teléfono</label><input style={inp} value={form.telefono} onChange={e => f("telefono", e.target.value)} placeholder="300..." /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div><label style={lbl}>Usuario</label><input style={inp} value={form.usuario} onChange={e => f("usuario", e.target.value)} placeholder="usuario123" /></div>
-                <div><label style={lbl}>{editando ? "Nueva contrasena (opcional)" : "Contrasena"}</label><input style={inp} type="password" value={form.password_hash} onChange={e => f("password_hash", e.target.value)} placeholder="••••••••" /></div>
+              <div><label style={lbl}>Usuario</label><input style={inp} value={form.usuario} onChange={e => f("usuario", e.target.value)} placeholder="usuario123" /></div>
+              <div>
+                <label style={lbl}>{editando ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña"}</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...inp, paddingRight: "44px" }}
+                    type={verPass ? "text" : "password"}
+                    value={form.password_hash}
+                    onChange={e => f("password_hash", e.target.value)}
+                    placeholder="••••••••"
+                  />
+                  <button type="button" onClick={() => setVerPass(v => !v)}
+                    style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#8B91A8", fontSize: "16px", padding: 0 }}>
+                    {verPass ? "🙈" : "👁️"}
+                  </button>
+                </div>
+                {form.password_hash ? (() => {
+                  const { checks, score, nivel, color } = getFortaleza(form.password_hash as string)
+                  return (
+                    <div style={{ marginTop: "10px" }}>
+                      <div style={{ display: "flex", gap: "4px", marginBottom: "6px" }}>
+                        {[1,2,3,4,5].map(i => (
+                          <div key={i} style={{ flex: 1, height: "4px", borderRadius: "99px", background: i <= score ? color : "#2A3044", transition: "background 0.2s" }} />
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "12px", color, fontWeight: 600 }}>{nivel}</span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {[
+                          { ok: checks.longitud,   label: "8+ caracteres" },
+                          { ok: checks.mayuscula,  label: "Mayúscula" },
+                          { ok: checks.minuscula,  label: "Minúscula" },
+                          { ok: checks.numero,     label: "Número" },
+                          { ok: checks.especial,   label: "Especial (!@#...)" },
+                        ].map(c => (
+                          <span key={c.label} style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "99px", background: c.ok ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.05)", color: c.ok ? "#22c55e" : "#555C74" }}>
+                            {c.ok ? "✓" : "✗"} {c.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })() : null}
               </div>
               <div>
                 <label style={lbl}>Perfil</label>

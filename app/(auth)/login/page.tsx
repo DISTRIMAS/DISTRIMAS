@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [verPass, setVerPass] = useState(false)
 
   async function handleLogin() {
     setError("")
@@ -42,9 +43,15 @@ export default function LoginPage() {
             style={{width:"100%",padding:"13px 14px",background:"#1E2330",border:"1.5px solid rgba(255,255,255,0.07)",borderRadius:"8px",color:"white",fontSize:"15px",outline:"none",boxSizing:"border-box"}} />
         </div>
         <div style={{marginBottom:"24px"}}>
-          <label style={{display:"block",fontSize:"11px",fontWeight:"bold",color:"#8B91A8",textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:"8px"}}>Contrasena</label>
-          <input id="inp-pass" type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key==="Enter" && handleLogin()} placeholder="********"
-            style={{width:"100%",padding:"13px 14px",background:"#1E2330",border:"1.5px solid rgba(255,255,255,0.07)",borderRadius:"8px",color:"white",fontSize:"15px",outline:"none",boxSizing:"border-box"}} />
+          <label style={{display:"block",fontSize:"11px",fontWeight:"bold",color:"#8B91A8",textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:"8px"}}>Contraseña</label>
+          <div style={{position:"relative"}}>
+            <input id="inp-pass" type={verPass ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key==="Enter" && handleLogin()} placeholder="********"
+              style={{width:"100%",padding:"13px 44px 13px 14px",background:"#1E2330",border:"1.5px solid rgba(255,255,255,0.07)",borderRadius:"8px",color:"white",fontSize:"15px",outline:"none",boxSizing:"border-box"}} />
+            <button type="button" onClick={() => setVerPass(v => !v)}
+              style={{position:"absolute",right:"14px",top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#8B91A8",fontSize:"18px",padding:0}}>
+              {verPass ? "🙈" : "👁️"}
+            </button>
+          </div>
         </div>
         <button onClick={handleLogin} disabled={loading}
           style={{width:"100%",padding:"14px",background:"#D72638",color:"white",fontWeight:"600",fontSize:"15px",borderRadius:"8px",border:"none",cursor:"pointer",opacity:loading?0.6:1}}>

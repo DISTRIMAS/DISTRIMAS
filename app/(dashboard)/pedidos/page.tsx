@@ -102,11 +102,16 @@ export default function PedidosPage() {
                   <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 600 }}>${p.total.toLocaleString("es-CO")}</td>
                   <td style={{ padding: "12px 16px", fontSize: "13px", color: "#8B91A8" }}>{new Date(p.created_at).toLocaleDateString("es-CO")}</td>
                   <td style={{ padding: "12px 16px" }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display: "flex", gap: "6px" }}>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                      {/* Editar: vendedor en borrador, admin en borrador o confirmado */}
+                      {(p.estado === "borrador" || (isAdmin && p.estado === "confirmado")) &&
+                        <button onClick={() => router.push(`/pedidos/nuevo?id=${p.id}`)} style={{ padding: "5px 10px", background: "rgba(255,255,255,0.08)", color: "#F0F2F7", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Editar</button>}
                       {p.estado === "borrador" && <button onClick={() => cambiarEstado(p.id, "confirmado")} style={{ padding: "5px 10px", background: "rgba(59,130,246,0.12)", color: "#60a5fa", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Confirmar</button>}
-                      {p.estado === "confirmado" && <button onClick={() => cambiarEstado(p.id, "entregado")} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.12)", color: "#22c55e", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Entregar</button>}
+                      {p.estado === "confirmado" && isAdmin && <button onClick={() => cambiarEstado(p.id, "entregado")} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.12)", color: "#22c55e", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Entregar</button>}
+                      {p.estado === "confirmado" && !isAdmin && <button onClick={() => cambiarEstado(p.id, "entregado")} style={{ padding: "5px 10px", background: "rgba(34,197,94,0.12)", color: "#22c55e", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Entregar</button>}
                       {(p.estado === "borrador" || p.estado === "confirmado") && <button onClick={() => cambiarEstado(p.id, "cancelado")} style={{ padding: "5px 10px", background: "rgba(215,38,56,0.1)", color: "#F04455", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Cancelar</button>}
-                      {isAdmin && <button onClick={() => eliminar(p.id)} style={{ padding: "5px 10px", background: "rgba(255,255,255,0.05)", color: "#555C74", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Eliminar</button>}
+                      {/* Eliminar: vendedor solo borradores propios, admin cualquiera */}
+                      {(p.estado === "borrador" || isAdmin) && <button onClick={() => eliminar(p.id)} style={{ padding: "5px 10px", background: "rgba(255,255,255,0.05)", color: "#555C74", fontSize: "12px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Eliminar</button>}
                     </div>
                   </td>
                 </tr>

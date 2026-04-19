@@ -1,14 +1,18 @@
 "use client"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { Cliente, Producto, PedidoItem } from "@/lib/types"
+import { Cliente, Producto } from "@/lib/types"
 import { getSession } from "@/lib/auth"
 
 type ItemForm = { producto: Producto; cantidad: number; precio_unitario: number }
 
 export default function NuevoPedidoPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const pedidoId = searchParams.get("id")
+  const modoEdicion = !!pedidoId
+
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
   const [clienteId, setClienteId] = useState("")
@@ -24,7 +28,25 @@ export default function NuevoPedidoPage() {
   useEffect(() => {
     supabase.from("clientes").select("*").eq("activo", true).order("nombre").then(r => setClientes(r.data || []))
     supabase.from("productos").select("*").eq("activo", true).order("nombre").then(r => setProductos(r.data || []))
+    if (pedidoId) cargarPedido(pedidoId)
   }, [])
+
+  async function cargarPedido(id: string) {
+    const { data } = await supabase
+      .from("pedidos")
+      .select("*, items:pedido_items(*, producto:productos(*))")
+      .eq("id", id)
+      .single()
+    if (!data) return
+    setClienteId(data.cliente_id)
+    setObservaciones(data.observaciones || "")
+    const itemsCargados: ItemForm[] = (data.items || []).map((i: { producto: Producto; cantidad: number; precio_unitario: number }) => ({
+      producto: i.producto,
+      cantidad: i.cantidad,
+      precio_unitario: i.precio_unitario,
+    }))
+    setItems(itemsCargados)
+  }
 
   const clienteSeleccionado = clientes.find(c => c.id === clienteId)
   const clientesFiltrados = clientes.filter(c => c.nombre.toLowerCase().includes(buscarCliente.toLowerCase()) || c.codigo.toLowerCase().includes(buscarCliente.toLowerCase()))
@@ -56,12 +78,24 @@ export default function NuevoPedidoPage() {
     if (items.length === 0) return setError("Agrega al menos un producto")
     setSaving(true); setError("")
     const user = getSession()
-    const { data: pedido, error: err } = await supabase.from("pedidos")
-      .insert({ cliente_id: clienteId, usuario_id: user?.id, estado, observaciones, total })
-      .select().single()
-    if (err || !pedido) { setSaving(false); return setError(err?.message || "Error al crear pedido") }
-    const itemsInsert = items.map(i => ({ pedido_id: pedido.id, producto_id: i.producto.id, cantidad: i.cantidad, precio_unitario: i.precio_unitario }))
-    await supabase.from("pedido_items").insert(itemsInsert)
+
+    if (modoEdicion && pedidoId) {
+      const { error: err } = await supabase.from("pedidos")
+        .update({ cliente_id: clienteId, estado, observaciones, total })
+        .eq("id", pedidoId)
+      if (err) { setSaving(false); return setError(err.message) }
+      await supabase.from("pedido_items").delete().eq("pedido_id", pedidoId)
+      const itemsInsert = items.map(i => ({ pedido_id: pedidoId, producto_id: i.producto.id, cantidad: i.cantidad, precio_unitario: i.precio_unitario }))
+      await supabase.from("pedido_items").insert(itemsInsert)
+    } else {
+      const { data: pedido, error: err } = await supabase.from("pedidos")
+        .insert({ cliente_id: clienteId, usuario_id: user?.id, estado, observaciones, total })
+        .select().single()
+      if (err || !pedido) { setSaving(false); return setError(err?.message || "Error al crear pedido") }
+      const itemsInsert = items.map(i => ({ pedido_id: pedido.id, producto_id: i.producto.id, cantidad: i.cantidad, precio_unitario: i.precio_unitario }))
+      await supabase.from("pedido_items").insert(itemsInsert)
+    }
+
     setSaving(false)
     router.push("/pedidos")
   }
@@ -72,7 +106,7 @@ export default function NuevoPedidoPage() {
     <div style={{ maxWidth: "800px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "28px" }}>
         <button onClick={() => router.push("/pedidos")} style={{ padding: "8px 14px", background: "rgba(255,255,255,0.06)", color: "#8B91A8", fontSize: "13px", borderRadius: "8px", border: "none", cursor: "pointer" }}>← Volver</button>
-        <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: 0 }}>Nuevo pedido</h2>
+        <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: 0 }}>{modoEdicion ? "Editar pedido" : "Nuevo pedido"}</h2>
       </div>
 
       {error && <div style={{ background: "rgba(215,38,56,0.1)", border: "1px solid rgba(215,38,56,0.25)", color: "#F04455", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
@@ -175,7 +209,7 @@ export default function NuevoPedidoPage() {
         </div>
         <div style={{ display: "flex", gap: "12px" }}>
           <button onClick={() => guardar("borrador")} disabled={saving} style={{ padding: "12px 24px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
-            Guardar borrador
+            {modoEdicion ? "Guardar cambios" : "Guardar borrador"}
           </button>
           <button onClick={() => guardar("confirmado")} disabled={saving} style={{ padding: "12px 24px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
             {saving ? "Guardando..." : "Confirmar pedido"}

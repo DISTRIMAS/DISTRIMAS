@@ -1,11 +1,20 @@
-﻿export interface Permisos {
-  dashboard: boolean
-  pedidos: boolean
-  clientes: boolean
-  inventario: boolean
-  usuarios: boolean
-  perfiles: boolean
-  estadisticas: boolean
+﻿export interface AccionesModulo {
+  ver: boolean
+  insertar: boolean
+  actualizar: boolean
+  eliminar: boolean
+  cargar: boolean
+  exportar: boolean
+}
+
+export interface Permisos {
+  dashboard: Partial<AccionesModulo>
+  pedidos: Partial<AccionesModulo>
+  clientes: Partial<AccionesModulo>
+  inventario: Partial<AccionesModulo>
+  usuarios: Partial<AccionesModulo>
+  perfiles: Partial<AccionesModulo>
+  estadisticas: Partial<AccionesModulo>
 }
 export interface Perfil {
   id: string

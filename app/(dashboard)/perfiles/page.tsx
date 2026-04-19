@@ -1,26 +1,37 @@
 "use client"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { Perfil, Permisos } from "@/lib/types"
+import { Perfil, Permisos, AccionesModulo } from "@/lib/types"
 
-const MODULOS: { key: keyof Permisos; label: string }[] = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "pedidos", label: "Pedidos" },
-  { key: "clientes", label: "Clientes" },
-  { key: "inventario", label: "Inventario" },
-  { key: "estadisticas", label: "Estadísticas" },
-  { key: "usuarios", label: "Usuarios" },
-  { key: "perfiles", label: "Perfiles" },
+const MODULOS: { key: keyof Permisos; label: string; acciones: (keyof AccionesModulo)[] }[] = [
+  { key: "dashboard",   label: "Dashboard",    acciones: ["ver"] },
+  { key: "pedidos",     label: "Pedidos",      acciones: ["ver", "insertar", "actualizar", "eliminar"] },
+  { key: "clientes",    label: "Clientes",     acciones: ["ver", "insertar", "actualizar", "eliminar", "cargar", "exportar"] },
+  { key: "inventario",  label: "Inventario",   acciones: ["ver", "insertar", "actualizar", "eliminar", "cargar", "exportar"] },
+  { key: "estadisticas",label: "Estadísticas", acciones: ["ver"] },
+  { key: "usuarios",    label: "Usuarios",     acciones: ["ver", "insertar", "actualizar", "eliminar"] },
+  { key: "perfiles",    label: "Perfiles",     acciones: ["ver", "insertar", "actualizar", "eliminar"] },
 ]
 
-const PERMISOS_VACIO: Permisos = { dashboard: false, pedidos: false, clientes: false, inventario: false, usuarios: false, perfiles: false, estadisticas: false }
+const ACCIONES_LABELS: Record<keyof AccionesModulo, string> = {
+  ver: "Ver", insertar: "Crear", actualizar: "Editar", eliminar: "Eliminar", cargar: "Importar", exportar: "Exportar"
+}
+
+const PERMISOS_VACIO = (): Permisos => ({
+  dashboard: {}, pedidos: {}, clientes: {}, inventario: {},
+  usuarios: {}, perfiles: {}, estadisticas: {}
+})
+
+const PERMISOS_ADMIN = (): Permisos => Object.fromEntries(
+  MODULOS.map(m => [m.key, Object.fromEntries(m.acciones.map(a => [a, true]))])
+) as unknown as Permisos
 
 export default function PerfilesPage() {
   const [perfiles, setPerfiles] = useState<Perfil[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState<string | null>(null)
-  const [form, setForm] = useState({ nombre: "", descripcion: "", permisos: { ...PERMISOS_VACIO } })
+  const [form, setForm] = useState({ nombre: "", descripcion: "", permisos: PERMISOS_VACIO() })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -37,10 +48,15 @@ export default function PerfilesPage() {
     setError("")
     if (p) {
       setEditando(p.id)
-      setForm({ nombre: p.nombre, descripcion: p.descripcion, permisos: { ...PERMISOS_VACIO, ...p.permisos } })
+      const permisos = PERMISOS_VACIO()
+      MODULOS.forEach(m => {
+        const src = (p.permisos as unknown as Record<string, Record<string, boolean>>)[m.key] || {}
+        permisos[m.key] = Object.fromEntries(m.acciones.map(a => [a, !!src[a]]))
+      })
+      setForm({ nombre: p.nombre, descripcion: p.descripcion, permisos })
     } else {
       setEditando(null)
-      setForm({ nombre: "", descripcion: "", permisos: { ...PERMISOS_VACIO } })
+      setForm({ nombre: "", descripcion: "", permisos: PERMISOS_VACIO() })
     }
     setModal(true)
   }
@@ -50,10 +66,9 @@ export default function PerfilesPage() {
   async function guardar() {
     if (!form.nombre.trim()) return setError("El nombre es requerido")
     setSaving(true); setError("")
-    const payload = { nombre: form.nombre, descripcion: form.descripcion, permisos: form.permisos }
     const { error: err } = editando
-      ? await supabase.from("perfiles").update(payload).eq("id", editando)
-      : await supabase.from("perfiles").insert(payload)
+      ? await supabase.from("perfiles").update(form).eq("id", editando)
+      : await supabase.from("perfiles").insert(form)
     setSaving(false)
     if (err) return setError(err.message)
     cerrar(); load()
@@ -65,8 +80,49 @@ export default function PerfilesPage() {
     load()
   }
 
-  const togglePermiso = (k: keyof Permisos) =>
-    setForm(f => ({ ...f, permisos: { ...f.permisos, [k]: !f.permisos[k] } }))
+  function toggleAccion(modulo: keyof Permisos, accion: keyof AccionesModulo) {
+    setForm(f => ({
+      ...f,
+      permisos: {
+        ...f.permisos,
+        [modulo]: { ...f.permisos[modulo], [accion]: !f.permisos[modulo][accion] }
+      }
+    }))
+  }
+
+  function toggleModulo(modulo: keyof Permisos, acciones: (keyof AccionesModulo)[]) {
+    setForm(f => {
+      const todas = acciones.every(a => f.permisos[modulo][a])
+      return {
+        ...f,
+        permisos: {
+          ...f.permisos,
+          [modulo]: Object.fromEntries(acciones.map(a => [a, !todas]))
+        }
+      }
+    })
+  }
+
+  function aplicarPlantilla(tipo: "admin" | "vendedor" | "ninguno") {
+    if (tipo === "admin") {
+      setForm(f => ({ ...f, permisos: PERMISOS_ADMIN() }))
+    } else if (tipo === "vendedor") {
+      setForm(f => ({
+        ...f,
+        permisos: {
+          dashboard: { ver: true },
+          pedidos: { ver: true, insertar: true, actualizar: true },
+          clientes: { ver: true, exportar: true },
+          inventario: { ver: true },
+          estadisticas: {},
+          usuarios: {},
+          perfiles: {},
+        }
+      }))
+    } else {
+      setForm(f => ({ ...f, permisos: PERMISOS_VACIO() }))
+    }
+  }
 
   const inp = { background: "#1E2330", border: "1.5px solid rgba(255,255,255,0.07)", borderRadius: "8px", color: "white", fontSize: "14px", padding: "10px 12px", outline: "none", width: "100%", boxSizing: "border-box" as const }
   const lbl = { display: "block", fontSize: "11px", fontWeight: "bold" as const, color: "#8B91A8", textTransform: "uppercase" as const, letterSpacing: "0.7px", marginBottom: "6px" }
@@ -99,15 +155,35 @@ export default function PerfilesPage() {
                   <button onClick={() => eliminar(p.id)} style={{ padding: "7px 14px", background: "rgba(215,38,56,0.1)", color: "#F04455", fontSize: "13px", borderRadius: "6px", border: "none", cursor: "pointer" }}>Eliminar</button>
                 </div>
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {MODULOS.map(m => {
-                  const tiene = p.permisos?.[m.key]
-                  return (
-                    <span key={m.key} style={{ padding: "4px 12px", borderRadius: "99px", fontSize: "12px", fontWeight: 600, background: tiene ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.05)", color: tiene ? "#22c55e" : "#555C74" }}>
-                      {tiene ? "✓" : "✗"} {m.label}
-                    </span>
-                  )
-                })}
+              {/* Tabla resumen de permisos */}
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                      <th style={{ padding: "6px 12px", textAlign: "left", color: "#8B91A8", fontWeight: 600, width: "130px" }}>Módulo</th>
+                      {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
+                        <th key={a} style={{ padding: "6px 8px", textAlign: "center", color: "#8B91A8", fontWeight: 600 }}>{ACCIONES_LABELS[a]}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MODULOS.map(m => {
+                      const mp = (p.permisos as unknown as Record<string, Record<string, boolean>>)[m.key] || {}
+                      return (
+                        <tr key={m.key} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                          <td style={{ padding: "6px 12px", fontWeight: 600, color: "#F0F2F7" }}>{m.label}</td>
+                          {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
+                            <td key={a} style={{ padding: "6px 8px", textAlign: "center" }}>
+                              {m.acciones.includes(a)
+                                ? <span style={{ color: mp[a] ? "#22c55e" : "#2A3044", fontSize: "16px" }}>{mp[a] ? "✓" : "·"}</span>
+                                : <span style={{ color: "#1E2330" }}>—</span>}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           ))}
@@ -115,28 +191,78 @@ export default function PerfilesPage() {
       )}
 
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "460px" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 24px" }}>{editando ? "Editar perfil" : "Nuevo perfil"}</h3>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "32px", width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 20px" }}>{editando ? "Editar perfil" : "Nuevo perfil"}</h3>
             {error && <div style={{ background: "rgba(215,38,56,0.1)", border: "1px solid rgba(215,38,56,0.25)", color: "#F04455", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
-            <div style={{ display: "grid", gap: "16px" }}>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
               <div><label style={lbl}>Nombre del perfil</label><input style={inp} value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Supervisor" /></div>
-              <div><label style={lbl}>Descripción</label><input style={inp} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Descripción del perfil" /></div>
-              <div>
-                <label style={lbl}>Permisos de acceso</label>
-                <div style={{ display: "grid", gap: "10px", marginTop: "8px" }}>
-                  {MODULOS.map(m => (
-                    <label key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#1E2330", borderRadius: "8px", cursor: "pointer" }}>
-                      <span style={{ fontSize: "14px" }}>{m.label}</span>
-                      <div onClick={() => togglePermiso(m.key)} style={{ width: "40px", height: "22px", borderRadius: "99px", background: form.permisos[m.key] ? "#D72638" : "#2A3044", position: "relative", cursor: "pointer", transition: "background 0.2s" }}>
-                        <span style={{ position: "absolute", width: "16px", height: "16px", borderRadius: "50%", top: "3px", left: form.permisos[m.key] ? "21px" : "3px", background: "white", transition: "left 0.2s" }} />
-                      </div>
-                    </label>
-                  ))}
-                </div>
+              <div><label style={lbl}>Descripción</label><input style={inp} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Descripción breve" /></div>
+            </div>
+
+            {/* Plantillas rápidas */}
+            <div style={{ marginBottom: "20px" }}>
+              <label style={lbl}>Plantilla rápida</label>
+              <div style={{ display: "flex", gap: "8px" }}>
+                {[
+                  { key: "admin", label: "Acceso total", color: "#D72638" },
+                  { key: "vendedor", label: "Vendedor estándar", color: "#60a5fa" },
+                  { key: "ninguno", label: "Sin permisos", color: "#555C74" },
+                ].map(t => (
+                  <button key={t.key} onClick={() => aplicarPlantilla(t.key as "admin" | "vendedor" | "ninguno")}
+                    style={{ padding: "7px 14px", background: "rgba(255,255,255,0.06)", color: t.color, fontSize: "13px", fontWeight: 600, borderRadius: "6px", border: `1px solid ${t.color}40`, cursor: "pointer" }}>
+                    {t.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+
+            {/* Matriz de permisos */}
+            <label style={lbl}>Permisos por módulo</label>
+            <div style={{ background: "#1E2330", borderRadius: "10px", overflow: "hidden", marginBottom: "24px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#171B25" }}>
+                    <th style={{ padding: "10px 14px", textAlign: "left", fontSize: "11px", color: "#8B91A8", fontWeight: 700, textTransform: "uppercase", width: "140px" }}>Módulo</th>
+                    {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
+                      <th key={a} style={{ padding: "10px 8px", textAlign: "center", fontSize: "11px", color: "#8B91A8", fontWeight: 700, textTransform: "uppercase" }}>{ACCIONES_LABELS[a]}</th>
+                    ))}
+                    <th style={{ padding: "10px 8px", textAlign: "center", fontSize: "11px", color: "#8B91A8", fontWeight: 700, textTransform: "uppercase" }}>Todo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {MODULOS.map((m, idx) => {
+                    const todasActivas = m.acciones.every(a => form.permisos[m.key][a])
+                    return (
+                      <tr key={m.key} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: idx % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
+                        <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: "13px" }}>{m.label}</td>
+                        {(["ver","insertar","actualizar","eliminar","cargar","exportar"] as (keyof AccionesModulo)[]).map(a => (
+                          <td key={a} style={{ padding: "10px 8px", textAlign: "center" }}>
+                            {m.acciones.includes(a) ? (
+                              <div onClick={() => toggleAccion(m.key, a)}
+                                style={{ width: "22px", height: "22px", borderRadius: "6px", background: form.permisos[m.key][a] ? "#22c55e" : "#2A3044", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", transition: "background 0.15s" }}>
+                                {form.permisos[m.key][a] && <span style={{ color: "white", fontSize: "13px", fontWeight: "bold" }}>✓</span>}
+                              </div>
+                            ) : (
+                              <span style={{ color: "#2A3044", fontSize: "18px" }}>—</span>
+                            )}
+                          </td>
+                        ))}
+                        <td style={{ padding: "10px 8px", textAlign: "center" }}>
+                          <div onClick={() => toggleModulo(m.key, m.acciones)}
+                            style={{ width: "22px", height: "22px", borderRadius: "6px", background: todasActivas ? "#D72638" : "#2A3044", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", margin: "0 auto", transition: "background 0.15s" }}>
+                            {todasActivas && <span style={{ color: "white", fontSize: "13px", fontWeight: "bold" }}>✓</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px" }}>
               <button onClick={cerrar} style={{ flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>Cancelar</button>
               <button onClick={guardar} disabled={saving} style={{ flex: 1, padding: "11px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Guardando..." : editando ? "Guardar cambios" : "Crear perfil"}

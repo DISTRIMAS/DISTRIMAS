@@ -8,6 +8,8 @@ import { useTheme } from "@/lib/theme-context"
 
 type ItemForm = { producto: Producto; cantidad: number; precio_unitario: number }
 
+interface Config { whatsapp_numero: string; nombre_empresa: string }
+
 export default function NuevoPedidoPage() {
   const theme = useTheme()
   const router = useRouter()
@@ -15,21 +17,23 @@ export default function NuevoPedidoPage() {
   const pedidoId = searchParams.get("id")
   const modoEdicion = !!pedidoId
 
-  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [clientes, setClientes]   = useState<Cliente[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
+  const [config, setConfig]       = useState<Config | null>(null)
   const [clienteId, setClienteId] = useState("")
   const [buscarCliente, setBuscarCliente] = useState("")
   const [buscarProducto, setBuscarProducto] = useState("")
-  const [items, setItems] = useState<ItemForm[]>([])
+  const [items, setItems]         = useState<ItemForm[]>([])
   const [observaciones, setObservaciones] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-  const [showClientes, setShowClientes] = useState(false)
+  const [saving, setSaving]       = useState(false)
+  const [error, setError]         = useState("")
+  const [showClientes, setShowClientes]   = useState(false)
   const [showProductos, setShowProductos] = useState(false)
 
   useEffect(() => {
     supabase.from("clientes").select("*").eq("activo", true).order("nombre").then(r => setClientes(r.data || []))
     supabase.from("productos").select("*").eq("activo", true).order("nombre").then(r => setProductos(r.data || []))
+    supabase.from("configuraciones").select("whatsapp_numero,nombre_empresa").limit(1).single().then(r => setConfig(r.data))
     if (pedidoId) cargarPedido(pedidoId)
   }, [])
 
@@ -122,6 +126,31 @@ export default function NuevoPedidoPage() {
     }
 
     setSaving(false)
+
+    // Si se confirmó y hay número de WhatsApp → abrir chat
+    if (estado === "confirmado" && config?.whatsapp_numero) {
+      const cliente = clientes.find(c => c.id === clienteId)
+      const user    = getSession()
+      const fecha   = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })
+      const lineas  = items.map(i => `• ${i.producto.nombre} x${i.cantidad} - $${i.precio_unitario.toLocaleString("es-CO")} = $${(i.cantidad * i.precio_unitario).toLocaleString("es-CO")}`).join("\n")
+      const msg = [
+        `🏪 *PEDIDO - ${config.nombre_empresa}*`,
+        ``,
+        `📋 *Cliente:* ${cliente?.nombre || ""}`,
+        `📍 *Municipio:* ${cliente?.municipio || ""}`,
+        `👤 *Vendedor:* ${user?.nombre || ""}`,
+        `📅 *Fecha:* ${fecha}`,
+        ``,
+        `*PRODUCTOS:*`,
+        lineas,
+        ``,
+        `💰 *TOTAL: $${total.toLocaleString("es-CO")}*`,
+        observaciones ? `\n📝 ${observaciones}` : "",
+      ].join("\n").trim()
+
+      window.open(`https://wa.me/${config.whatsapp_numero}?text=${encodeURIComponent(msg)}`, "_blank")
+    }
+
     router.push("/pedidos")
   }
 
@@ -288,8 +317,13 @@ export default function NuevoPedidoPage() {
           <button onClick={() => guardar("borrador")} disabled={saving} style={{ padding: "11px 20px", background: theme.cardAlt, color: theme.text, fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
             {modoEdicion ? "Guardar cambios" : "Guardar borrador"}
           </button>
-          <button onClick={() => guardar("confirmado")} disabled={saving} style={{ padding: "11px 20px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}>
-            {saving ? "Guardando..." : "Confirmar pedido"}
+          <button onClick={() => guardar("confirmado")} disabled={saving} style={{ padding: "11px 20px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1, display: "flex", alignItems: "center", gap: "8px" }}>
+            {saving ? "Guardando..." : (
+              <>
+                Confirmar pedido
+                {config?.whatsapp_numero && <span style={{ fontSize: "16px" }}>📱</span>}
+              </>
+            )}
           </button>
         </div>
       </div>

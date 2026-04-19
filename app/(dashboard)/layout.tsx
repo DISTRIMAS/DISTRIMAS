@@ -59,6 +59,7 @@ const MENUS_ADMIN = [
   { section: "Administración" },
   { id: "usuarios", label: "Usuarios", href: "/usuarios" },
   { id: "perfiles", label: "Perfiles", href: "/perfiles" },
+  { id: "configuraciones", label: "Configuraciones", href: "/configuraciones" },
 ]
 
 const MENUS_VENDEDOR = [
@@ -76,6 +77,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/": "Dashboard", "/pedidos": "Pedidos", "/pedidos/nuevo": "Nuevo pedido",
   "/clientes": "Clientes", "/inventario": "Inventario",
   "/usuarios": "Usuarios", "/perfiles": "Perfiles y permisos", "/estadisticas": "Estadísticas",
+  "/configuraciones": "Configuraciones",
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

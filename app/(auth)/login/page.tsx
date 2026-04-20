@@ -14,7 +14,9 @@ export default function LoginPage() {
   const [error, setError]       = useState("")
   const [loading, setLoading]   = useState(false)
   const [verPass, setVerPass]   = useState(false)
-  const [logoUrl, setLogoUrl]   = useState("")
+  const LOGO_URL = "https://zwilxcrbukksmwuqkfay.supabase.co/storage/v1/object/public/imagenes/logo.png"
+  const [logoUrl, setLogoUrl]     = useState(LOGO_URL)
+  const [logoOk, setLogoOk]       = useState(true)
 
   useEffect(() => {
     supabase.from("configuraciones").select("logo_url").limit(1).single()
@@ -62,8 +64,8 @@ export default function LoginPage() {
             margin: "0 auto 28px", overflow: "hidden",
             boxShadow: "0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.2)",
           }}>
-            {logoUrl
-              ? <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "20px" }} />
+            {logoOk
+              ? <img src={logoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "20px" }} onError={() => setLogoOk(false)} />
               : <span style={{ color: "white", fontWeight: "bold", fontSize: "90px" }}>D</span>
             }
           </div>
@@ -98,30 +100,35 @@ export default function LoginPage() {
       </div>
 
       {/* Panel derecho — formulario */}
-      <div style={{
+      <div className="login-right" style={{
         width: "100%", maxWidth: "500px",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        padding: "40px 32px", background: "white", position: "relative"
+        padding: "40px 24px", background: "white", position: "relative"
       }}>
         <div style={{ width: "100%", maxWidth: "370px" }}>
 
           {/* Logo móvil */}
-          <div className="login-mobile-logo" style={{ display: "none", alignItems: "center", gap: "12px", marginBottom: "36px" }}>
+          <div className="login-mobile-logo" style={{ display: "none", alignItems: "center", gap: "14px", marginBottom: "32px" }}>
             <div style={{
-              width: "44px", height: "44px", borderRadius: "12px",
-              background: logoUrl ? "white" : `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})`,
+              width: "56px", height: "56px", borderRadius: "14px", flexShrink: 0,
+              background: logoOk ? "white" : `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              overflow: "hidden", border: logoUrl ? `1px solid #E5E7EB` : "none",
-              boxShadow: `0 4px 12px rgba(192,57,43,0.25)`
+              overflow: "hidden",
+              border: logoOk ? `1.5px solid #E5E7EB` : "none",
+              boxShadow: `0 4px 16px rgba(192,57,43,0.2)`
             }}>
-              {logoUrl
-                ? <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "4px" }} />
-                : <span style={{ color: "white", fontWeight: "bold", fontSize: "20px" }}>D</span>
+              {logoOk
+                ? <img
+                    src={logoUrl} alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "contain", padding: "6px" }}
+                    onError={() => setLogoOk(false)}
+                  />
+                : <span style={{ color: "white", fontWeight: "bold", fontSize: "24px" }}>D</span>
               }
             </div>
             <div>
-              <p style={{ fontWeight: 700, color: "#141720", fontSize: "16px", margin: 0 }}>Distrimas SC</p>
-              <p style={{ color: "#9CA3AF", fontSize: "11px", margin: 0 }}>Sistema de gestión</p>
+              <p style={{ fontWeight: 700, color: "#141720", fontSize: "17px", margin: "0 0 2px" }}>Distrimas SC</p>
+              <p style={{ color: "#9CA3AF", fontSize: "12px", margin: 0 }}>Sistema de gestión</p>
             </div>
           </div>
 
@@ -230,6 +237,10 @@ export default function LoginPage() {
         @media (max-width: 768px) {
           .login-left { display: none !important; }
           .login-mobile-logo { display: flex !important; }
+          .login-right { padding: 32px 20px !important; justify-content: flex-start !important; padding-top: 48px !important; }
+        }
+        @media (max-width: 400px) {
+          .login-right { padding: 28px 16px !important; padding-top: 40px !important; }
         }
 
         @keyframes logoBounce {

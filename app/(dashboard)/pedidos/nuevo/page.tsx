@@ -27,6 +27,7 @@ export default function NuevoPedidoPage() {
   const [observaciones, setObservaciones] = useState("")
   const [saving, setSaving]       = useState(false)
   const [error, setError]         = useState("")
+  const [warn, setWarn]           = useState("")
   const [showClientes, setShowClientes]   = useState(false)
   const [showProductos, setShowProductos] = useState(false)
 
@@ -76,23 +77,24 @@ export default function NuevoPedidoPage() {
 
   function quitarItem(id: string) { setItems(items.filter(i => i.producto.id !== id)) }
 
+  function alertaStock(item: ItemForm, nuevaCant: number) {
+    if (nuevaCant > item.producto.stock)
+      setWarn(`⚠️ Ojo: "${item.producto.nombre}" solo tiene ${item.producto.stock} uds. en stock. El vendedor es responsable de este pedido.`)
+    else setWarn("")
+  }
   function sumar(id: string) {
     const item = items.find(i => i.producto.id === id)
     if (!item) return
     const nuevaCant = item.cantidad + 1
-    if (nuevaCant > item.producto.stock) {
-      setError(`⚠️ Stock insuficiente: "${item.producto.nombre}" solo tiene ${item.producto.stock} unidades disponibles.`)
-      return
-    }
-    setError("")
+    alertaStock(item, nuevaCant)
     setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: nuevaCant } : i))
   }
   function restar(id: string) {
     const item = items.find(i => i.producto.id === id)
-    if (!item) return
-    if (item.cantidad <= 1) return
-    setError("")
-    setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: i.cantidad - 1 } : i))
+    if (!item || item.cantidad <= 1) return
+    const nuevaCant = item.cantidad - 1
+    alertaStock(item, nuevaCant)
+    setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: nuevaCant } : i))
   }
   function setCantidad(id: string, val: string) {
     const n = parseInt(val)
@@ -102,12 +104,7 @@ export default function NuevoPedidoPage() {
     }
     if (n < 1) return
     const item = items.find(i => i.producto.id === id)
-    if (item && n > item.producto.stock) {
-      setError(`⚠️ Stock insuficiente: "${item.producto.nombre}" solo tiene ${item.producto.stock} unidades disponibles.`)
-      setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: item.producto.stock } : i))
-      return
-    }
-    setError("")
+    if (item) alertaStock(item, n)
     setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: n } : i))
   }
   function cambiarPrecio(id: string, val: string) {
@@ -120,9 +117,7 @@ export default function NuevoPedidoPage() {
   async function guardar(estado: "borrador" | "confirmado") {
     if (!clienteId) return setError("Selecciona un cliente")
     if (items.length === 0) return setError("Agrega al menos un producto")
-    const sinStock = items.find(i => i.cantidad > i.producto.stock)
-    if (sinStock) return setError(`⚠️ "${sinStock.producto.nombre}" supera el stock disponible (${sinStock.producto.stock} unidades). Ajusta la cantidad.`)
-    setSaving(true); setError("")
+    setSaving(true); setError(""); setWarn("")
     const user = getSession()
 
     if (modoEdicion && pedidoId) {
@@ -185,6 +180,7 @@ export default function NuevoPedidoPage() {
       </div>
 
       {error && <div style={{ background: "rgba(215,38,56,0.1)", border: "1px solid rgba(215,38,56,0.25)", color: "#D72638", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px" }}>{error}</div>}
+      {warn  && <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.35)", color: "#d97706", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", marginBottom: "16px", fontWeight: 500 }}>{warn}</div>}
 
       {/* CLIENTE */}
       <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "18px", marginBottom: "14px" }}>

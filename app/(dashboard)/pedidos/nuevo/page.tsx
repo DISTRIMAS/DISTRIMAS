@@ -131,7 +131,9 @@ export default function NuevoPedidoPage() {
     if (estado === "confirmado" && config?.whatsapp_numero) {
       const cliente = clientes.find(c => c.id === clienteId)
       const user    = getSession()
-      const fecha   = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })
+      const ahora   = new Date()
+      const fecha   = ahora.toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric", timeZone: "America/Bogota" })
+      const hora    = ahora.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", timeZone: "America/Bogota" })
       const lineas  = items.map(i => `• ${i.producto.nombre} x${i.cantidad} - $${i.precio_unitario.toLocaleString("es-CO")} = $${(i.cantidad * i.precio_unitario).toLocaleString("es-CO")}`).join("\n")
       const msg = [
         `🏪 *PEDIDO - ${config.nombre_empresa}*`,
@@ -139,7 +141,7 @@ export default function NuevoPedidoPage() {
         `📋 *Cliente:* ${cliente?.nombre || ""}`,
         `📍 *Municipio:* ${cliente?.municipio || ""}`,
         `👤 *Vendedor:* ${user?.nombre || ""}`,
-        `📅 *Fecha:* ${fecha}`,
+        `📅 *Fecha:* ${fecha} · ${hora}`,
         ``,
         `*PRODUCTOS:*`,
         lineas,

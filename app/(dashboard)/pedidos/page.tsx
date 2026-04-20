@@ -175,7 +175,10 @@ export default function PedidosPage() {
                       <span style={{ padding: "3px 10px", borderRadius: "99px", fontSize: "12px", fontWeight: 600, ...col, whiteSpace: "nowrap" }}>{p.estado}</span>
                     </td>
                     <td style={{ padding: "11px 14px", fontSize: "14px", fontWeight: 600, color: theme.text, whiteSpace: "nowrap" }}>${p.total.toLocaleString("es-CO")}</td>
-                    <td style={{ padding: "11px 14px", fontSize: "13px", color: theme.muted, whiteSpace: "nowrap" }}>{new Date(p.created_at).toLocaleDateString("es-CO")}</td>
+                    <td style={{ padding: "11px 14px", fontSize: "13px", color: theme.muted, whiteSpace: "nowrap" }}>
+                      <span>{new Date(p.created_at).toLocaleDateString("es-CO")}</span>
+                      <span style={{ display: "block", fontSize: "11px", color: theme.muted, opacity: 0.7 }}>{new Date(p.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", timeZone: "America/Bogota" })}</span>
+                    </td>
                     <td style={{ padding: "11px 14px" }} onClick={e => e.stopPropagation()}>
                       <div className="acciones-wrap">
                         {(p.estado === "borrador" || (isAdmin && p.estado === "confirmado")) &&
@@ -208,7 +211,7 @@ export default function PedidosPage() {
             <div className="form-grid-2" style={{ marginBottom: "16px", padding: "14px", background: theme.cardAlt, borderRadius: "10px" }}>
               <div><p style={{ color: theme.muted, fontSize: "11px", margin: "0 0 2px" }}>MUNICIPIO</p><p style={{ fontSize: "13px", margin: 0, color: theme.text }}>{detalle.cliente?.municipio || "-"}</p></div>
               <div><p style={{ color: theme.muted, fontSize: "11px", margin: "0 0 2px" }}>TELÉFONO</p><p style={{ fontSize: "13px", margin: 0, color: theme.text }}>{detalle.cliente?.telefono || "-"}</p></div>
-              <div><p style={{ color: theme.muted, fontSize: "11px", margin: "0 0 2px" }}>FECHA</p><p style={{ fontSize: "13px", margin: 0, color: theme.text }}>{new Date(detalle.created_at).toLocaleDateString("es-CO")}</p></div>
+              <div><p style={{ color: theme.muted, fontSize: "11px", margin: "0 0 2px" }}>FECHA Y HORA</p><p style={{ fontSize: "13px", margin: 0, color: theme.text }}>{new Date(detalle.created_at).toLocaleDateString("es-CO")} · {new Date(detalle.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", timeZone: "America/Bogota" })}</p></div>
               <div><p style={{ color: theme.muted, fontSize: "11px", margin: "0 0 2px" }}>VENDEDOR</p><p style={{ fontSize: "13px", margin: 0, color: theme.text }}>{(detalle.usuario as unknown as { nombre: string })?.nombre || "-"}</p></div>
             </div>
             {detalle.observaciones && <p style={{ color: theme.muted, fontSize: "13px", marginBottom: "14px", fontStyle: "italic" }}>"{detalle.observaciones}"</p>}

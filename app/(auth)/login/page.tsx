@@ -233,24 +233,25 @@ export default function LoginPage() {
         }
 
         @keyframes logoBounce {
-          0%   { transform: scale(0.3) translateY(-60px); opacity: 0; }
-          55%  { transform: scale(1.08) translateY(8px);  opacity: 1; }
-          75%  { transform: scale(0.95) translateY(-4px); }
-          90%  { transform: scale(1.02) translateY(2px); }
-          100% { transform: scale(1)    translateY(0);    opacity: 1; }
+          0%   { transform: scale(0) rotate(-15deg) translateY(-120px); opacity: 0; }
+          40%  { transform: scale(1.25) rotate(6deg) translateY(20px);  opacity: 1; }
+          60%  { transform: scale(0.88) rotate(-4deg) translateY(-10px); }
+          75%  { transform: scale(1.12) rotate(2deg) translateY(8px); }
+          88%  { transform: scale(0.95) rotate(-1deg) translateY(-4px); }
+          100% { transform: scale(1)    rotate(0deg) translateY(0);    opacity: 1; }
         }
         @keyframes fadeUp {
           0%   { opacity: 0; transform: translateY(20px); }
           100% { opacity: 1; transform: translateY(0); }
         }
         @keyframes glowPulse {
-          0%, 100% { box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.1); }
-          50%       { box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 0 40px rgba(255,255,255,0.15), 0 0 0 1px rgba(255,255,255,0.2); }
+          0%, 100% { box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 0 rgba(255,255,255,0); }
+          50%       { box-shadow: 0 20px 80px rgba(0,0,0,0.4), 0 0 60px rgba(255,255,255,0.25), 0 0 0 6px rgba(255,255,255,0.08); }
         }
 
         .logo-bounce {
-          animation: logoBounce 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-                     glowPulse 3s ease-in-out 1s infinite;
+          animation: logoBounce 1s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+                     glowPulse 2.5s ease-in-out 1.2s infinite;
           opacity: 0;
         }
         .logo-fade-up {

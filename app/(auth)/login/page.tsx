@@ -52,29 +52,31 @@ export default function LoginPage() {
         <div style={{ position: "absolute", bottom: "120px", left: 0, right: 0, height: "1px", background: "rgba(255,255,255,0.08)" }} />
 
         <div style={{ position: "relative", zIndex: 2, textAlign: "center", width: "100%", maxWidth: "420px" }}>
-          {/* Logo grande */}
-          <div style={{
-            width: "160px", height: "160px", borderRadius: "28px",
-            background: "rgba(255,255,255,0.15)",
-            backdropFilter: "blur(6px)",
-            border: "1px solid rgba(255,255,255,0.25)",
+          {/* Logo espectacular */}
+          <div className="logo-bounce" style={{
+            width: "220px", height: "220px", borderRadius: "36px",
+            background: "rgba(255,255,255,0.18)",
+            backdropFilter: "blur(10px)",
+            border: "2px solid rgba(255,255,255,0.3)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 28px",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden",
+            margin: "0 auto 28px", overflow: "hidden",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.2)",
           }}>
             {logoUrl
-              ? <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "16px" }} />
-              : <span style={{ color: "white", fontWeight: "bold", fontSize: "72px" }}>D</span>
+              ? <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "20px" }} />
+              : <span style={{ color: "white", fontWeight: "bold", fontSize: "90px" }}>D</span>
             }
           </div>
 
-          <h1 style={{ fontSize: "30px", fontWeight: 700, color: "white", margin: "0 0 10px", letterSpacing: "-0.5px" }}>Distrimas SC</h1>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "14px", margin: "0 0 36px", lineHeight: 1.7 }}>
-            Sistema de gestión de pedidos,<br />clientes e inventario
-          </p>
+          <div className="logo-fade-up" style={{ animationDelay: "0.3s" }}>
+            <h1 style={{ fontSize: "30px", fontWeight: 700, color: "white", margin: "0 0 10px", letterSpacing: "-0.5px" }}>Distrimas SC</h1>
+            <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "14px", margin: "0 0 32px", lineHeight: 1.7 }}>
+              Sistema de gestión de pedidos,<br />clientes e inventario
+            </p>
+          </div>
 
-          {/* Features — grid 2x2 horizontal */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          {/* Features — grid 2x2 */}
+          <div className="logo-fade-up" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", animationDelay: "0.5s" }}>
             {[
               { icon: "📦", label: "Pedidos en tiempo real" },
               { icon: "📊", label: "Control de inventario" },
@@ -228,6 +230,32 @@ export default function LoginPage() {
         @media (max-width: 768px) {
           .login-left { display: none !important; }
           .login-mobile-logo { display: flex !important; }
+        }
+
+        @keyframes logoBounce {
+          0%   { transform: scale(0.3) translateY(-60px); opacity: 0; }
+          55%  { transform: scale(1.08) translateY(8px);  opacity: 1; }
+          75%  { transform: scale(0.95) translateY(-4px); }
+          90%  { transform: scale(1.02) translateY(2px); }
+          100% { transform: scale(1)    translateY(0);    opacity: 1; }
+        }
+        @keyframes fadeUp {
+          0%   { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes glowPulse {
+          0%, 100% { box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.1); }
+          50%       { box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 0 40px rgba(255,255,255,0.15), 0 0 0 1px rgba(255,255,255,0.2); }
+        }
+
+        .logo-bounce {
+          animation: logoBounce 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+                     glowPulse 3s ease-in-out 1s infinite;
+          opacity: 0;
+        }
+        .logo-fade-up {
+          opacity: 0;
+          animation: fadeUp 0.6s ease forwards;
         }
       `}</style>
     </div>

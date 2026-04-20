@@ -44,10 +44,11 @@ export default function DashboardPage() {
   async function loadAll(session: Usuario | null) {
     setLoading(true)
     const col = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
-    const hoy      = col(new Date())
-    const ayer     = col(new Date(Date.now() - 86400000))
+    const hoy       = col(new Date()) + "T00:00:00-05:00"
+    const manana    = col(new Date(Date.now() + 86400000)) + "T00:00:00-05:00"
+    const ayer      = col(new Date(Date.now() - 86400000)) + "T00:00:00-05:00"
     const inicioMes = col(new Date(new Date().getFullYear(), new Date().getMonth(), 1)) + "T00:00:00-05:00"
-    const hace30   = col(new Date(Date.now() - 30 * 86400000))
+    const hace30    = col(new Date(Date.now() - 30 * 86400000)) + "T00:00:00-05:00"
 
     const isAdmin = session?.perfil?.nombre === "Administrador"
 
@@ -60,7 +61,7 @@ export default function DashboardPage() {
       { data: pedidos30 },
       { data: recientesRaw },
     ] = await Promise.all([
-      supabase.from("pedidos").select("id", { count: "exact", head: true }).gte("created_at", hoy),
+      supabase.from("pedidos").select("id", { count: "exact", head: true }).gte("created_at", hoy).lt("created_at", manana),
       supabase.from("pedidos").select("id", { count: "exact", head: true }).gte("created_at", ayer).lt("created_at", hoy),
       supabase.from("pedidos").select("total, usuario:usuarios(nombre), cliente:clientes(nombre, municipio), items:pedido_items(cantidad, precio_unitario, producto:productos(nombre))").gte("created_at", inicioMes).neq("estado", "cancelado"),
       supabase.from("clientes").select("id", { count: "exact", head: true }).eq("activo", true),
@@ -117,7 +118,7 @@ export default function DashboardPage() {
     }
     ;(pedidos30 || []).forEach((p: any) => {
       const d = new Date(p.created_at).toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
-      if (diaMap[d] !== undefined) diaMap[d]++
+      if (d in diaMap) diaMap[d]++
     })
 
     const sort = <T extends TopItem>(m: Record<string, T>) =>

@@ -34,16 +34,15 @@ export default function PedidosPage() {
 
   async function load() {
     setLoading(true)
-    // fechaFin + 1 día para incluir todo ese día
-    const fin = new Date(fechaFin + "T00:00:00-05:00")
-    fin.setDate(fin.getDate() + 1)
-    const finStr = fin.toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
+    // Usar timestamps con offset Colombia (-05:00) para comparación exacta contra created_at UTC
+    const ini = fechaIni + "T00:00:00-05:00"   // medianoche Colombia del día inicial
+    const fin = fechaFin + "T23:59:59-05:00"   // último segundo Colombia del día final
 
     let q = supabase
       .from("pedidos")
       .select("*, cliente:clientes(*), usuario:usuarios(nombre), items:pedido_items(*, producto:productos(nombre,unidad))")
-      .gte("created_at", fechaIni)
-      .lt("created_at", finStr)
+      .gte("created_at", ini)
+      .lte("created_at", fin)
       .order("created_at", { ascending: false })
     if (!isAdmin) q = q.eq("usuario_id", userId)
     const { data } = await q

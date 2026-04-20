@@ -3,12 +3,16 @@ import { useEffect, useState, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { Producto } from "@/lib/types"
 import { useTheme } from "@/lib/theme-context"
+import { getSession } from "@/lib/auth"
 import * as XLSX from "xlsx"
 
 const EMPTY: Partial<Producto> = { codigo: "", nombre: "", descripcion: "", unidad: "Und", precio: 0, stock: 0, stock_minimo: 10, activo: true }
 
+interface ImportResumen { nuevos: number; actualizados: number; errores: number; total: number }
+
 export default function InventarioPage() {
   const theme = useTheme()
+  const isAdmin = getSession()?.perfil?.nombre === "Administrador"
   const [productos, setProductos] = useState<Producto[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
@@ -18,8 +22,14 @@ export default function InventarioPage() {
   const [error, setError] = useState("")
   const [buscar, setBuscar] = useState("")
   const [filtro, setFiltro] = useState<"todos" | "bajo" | "ok">("todos")
-  const [importando, setImportando] = useState(false)
-  const [msgImport, setMsgImport] = useState("")
+
+  // Import state
+  const [archivoNombre, setArchivoNombre] = useState<string | null>(null)
+  const [archivoData, setArchivoData]     = useState<ArrayBuffer | null>(null)
+  const [procesando, setProcesando]       = useState(false)
+  const [progreso, setProgreso]           = useState(0)
+  const [resumen, setResumen]             = useState<ImportResumen | null>(null)
+  const [importError, setImportError]     = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -63,30 +73,82 @@ export default function InventarioPage() {
     await supabase.from("productos").update({ activo: !p.activo }).eq("id", p.id)
   }
 
-  async function importarExcel(e: React.ChangeEvent<HTMLInputElement>) {
+  function seleccionarArchivo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setImportando(true); setMsgImport("")
-    const data = await file.arrayBuffer()
-    const wb = XLSX.read(data)
+    setArchivoNombre(file.name)
+    setResumen(null)
+    setImportError("")
+    file.arrayBuffer().then(buf => setArchivoData(buf))
+  }
+
+  function limpiarImport() {
+    setArchivoNombre(null)
+    setArchivoData(null)
+    setResumen(null)
+    setImportError("")
+    setProgreso(0)
+    if (fileRef.current) fileRef.current.value = ""
+  }
+
+  async function procesarExcel() {
+    if (!archivoData) return
+    setProcesando(true); setProgreso(0); setResumen(null); setImportError("")
+
+    const wb = XLSX.read(archivoData)
     const ws = wb.Sheets[wb.SheetNames[0]]
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws)
-    const registros = rows.map(r => ({
-      codigo: String(r["codigo"] || r["Codigo"] || r["CODIGO"] || "").trim(),
-      nombre: String(r["nombre"] || r["Nombre"] || r["NOMBRE"] || "").trim(),
-      descripcion: String(r["descripcion"] || r["Descripcion"] || "").trim(),
-      unidad: String(r["unidad"] || r["Unidad"] || "Und").trim(),
-      precio: Number(r["precio"] || r["Precio"] || 0),
-      stock: Number(r["stock"] || r["Stock"] || 0),
-      stock_minimo: Number(r["stock_minimo"] || r["StockMinimo"] || 10),
-      activo: true,
-    })).filter(r => r.nombre && r.codigo)
-    if (registros.length === 0) { setMsgImport("No se encontraron registros válidos."); setImportando(false); return }
-    const { error: err } = await supabase.from("productos").upsert(registros, { onConflict: "codigo" })
-    setImportando(false)
-    if (err) { setMsgImport("Error: " + err.message); return }
-    setMsgImport(`✓ ${registros.length} productos importados`)
-    if (fileRef.current) fileRef.current.value = ""
+
+    const col = (r: Record<string, unknown>, ...keys: string[]) => {
+      for (const k of keys) if (r[k] !== undefined && r[k] !== null && r[k] !== "") return r[k]
+      return undefined
+    }
+
+    const filas = rows.map(r => ({
+      codigo:       String(col(r, "codigo", "Codigo", "CODIGO") ?? "").trim(),
+      nombre:       String(col(r, "nombre", "Nombre", "NOMBRE") ?? "").trim(),
+      descripcion:  String(col(r, "descripcion", "Descripcion", "DESCRIPCION") ?? "").trim(),
+      unidad:       String(col(r, "unidad", "Unidad", "UNIDAD") ?? "Und").trim(),
+      precio:       Number(col(r, "precio", "Precio", "PRECIO") ?? 0),
+      stock:        Number(col(r, "stock", "Stock", "STOCK") ?? 0),
+      stock_minimo: Number(col(r, "stock_minimo", "StockMinimo", "STOCK_MINIMO") ?? 10),
+    }))
+
+    const LOTE = 20
+    let nuevos = 0, actualizados = 0, errores = 0
+    const total = filas.length
+
+    for (let i = 0; i < filas.length; i += LOTE) {
+      const lote = filas.slice(i, i + LOTE)
+
+      for (const fila of lote) {
+        if (!fila.codigo) { errores++; continue }
+
+        const { data: existe } = await supabase
+          .from("productos").select("id").eq("codigo", fila.codigo).maybeSingle()
+
+        if (existe) {
+          const { error: err } = await supabase.from("productos")
+            .update({ stock: fila.stock, precio: fila.precio, updated_at: new Date().toISOString() })
+            .eq("codigo", fila.codigo)
+          if (err) errores++; else actualizados++
+        } else {
+          const { error: err } = await supabase.from("productos").insert({
+            codigo: fila.codigo, nombre: fila.nombre || fila.codigo,
+            descripcion: fila.descripcion, unidad: fila.unidad || "Und",
+            precio: fila.precio, stock: fila.stock,
+            stock_minimo: fila.stock_minimo || 10, activo: true,
+          })
+          if (err) errores++; else nuevos++
+        }
+      }
+
+      setProgreso(Math.round(Math.min(i + LOTE, total) / total * 100))
+    }
+
+    setProcesando(false)
+    setResumen({ nuevos, actualizados, errores, total })
+    load()
   }
 
   function exportarExcel() {
@@ -120,17 +182,73 @@ export default function InventarioPage() {
         </div>
         <div className="page-header-btns">
           <button onClick={exportarExcel} style={{ padding: "10px 16px", background: theme.cardAlt, color: theme.text, fontWeight: 600, fontSize: "13px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Exportar Excel</button>
-          <label style={{ padding: "10px 16px", background: "rgba(34,197,94,0.12)", color: "#22c55e", fontWeight: 600, fontSize: "13px", borderRadius: "8px", border: "none", cursor: "pointer", display: "inline-block" }}>
-            {importando ? "Importando..." : "Cargar Excel"}
-            <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={importarExcel} style={{ display: "none" }} />
-          </label>
           <button onClick={() => abrir()} style={{ padding: "10px 20px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>+ Producto</button>
         </div>
       </div>
 
-      {msgImport && (
-        <div style={{ background: msgImport.startsWith("✓") ? "rgba(34,197,94,0.1)" : "rgba(215,38,56,0.1)", border: `1px solid ${msgImport.startsWith("✓") ? "rgba(34,197,94,0.25)" : "rgba(215,38,56,0.25)"}`, color: msgImport.startsWith("✓") ? "#22c55e" : "#F04455", borderRadius: "8px", padding: "10px 16px", fontSize: "13px", marginBottom: "16px" }}>
-          {msgImport}
+      {/* Panel importación — solo admin */}
+      {isAdmin && (
+        <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "20px", marginBottom: "16px" }}>
+          <p style={{ fontSize: "13px", fontWeight: 700, color: theme.text, margin: "0 0 14px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span>📥</span> Importar inventario desde Excel
+          </p>
+
+          {/* Selector */}
+          {!archivoNombre ? (
+            <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 18px", background: "rgba(59,130,246,0.1)", color: "#3b82f6", fontWeight: 600, fontSize: "13px", borderRadius: "8px", border: "1px dashed rgba(59,130,246,0.4)", cursor: "pointer" }}>
+              <span style={{ fontSize: "16px" }}>⬆️</span> Seleccionar archivo Excel
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={seleccionarArchivo} style={{ display: "none" }} />
+            </label>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              {/* Nombre archivo */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", background: theme.cardAlt, borderRadius: "8px", border: `1px solid ${theme.border}` }}>
+                <span style={{ fontSize: "16px" }}>📄</span>
+                <span style={{ fontSize: "13px", color: theme.text, fontWeight: 500 }}>{archivoNombre}</span>
+                {!procesando && (
+                  <button onClick={limpiarImport} style={{ background: "none", border: "none", cursor: "pointer", color: theme.muted, fontSize: "14px", padding: "0 0 0 4px", lineHeight: 1 }}>✕</button>
+                )}
+              </div>
+
+              {/* Botón procesar */}
+              {!procesando && !resumen && (
+                <button onClick={procesarExcel} style={{ padding: "9px 20px", background: "#22c55e", color: "white", fontWeight: 700, fontSize: "13px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
+                  Procesar →
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Barra de progreso */}
+          {procesando && (
+            <div style={{ marginTop: "14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: theme.muted, marginBottom: "6px" }}>
+                <span>Procesando...</span><span>{progreso}%</span>
+              </div>
+              <div style={{ height: "8px", background: theme.cardAlt, borderRadius: "99px", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${progreso}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", borderRadius: "99px", transition: "width 0.3s ease" }} />
+              </div>
+            </div>
+          )}
+
+          {/* Resumen final */}
+          {resumen && (
+            <div style={{ marginTop: "14px", display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", flex: 1 }}>
+                <span style={{ padding: "6px 12px", background: "rgba(34,197,94,0.12)", color: "#22c55e", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>✓ {resumen.nuevos} nuevos</span>
+                <span style={{ padding: "6px 12px", background: "rgba(59,130,246,0.12)", color: "#3b82f6", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>↑ {resumen.actualizados} actualizados</span>
+                {resumen.errores > 0 && <span style={{ padding: "6px 12px", background: "rgba(215,38,56,0.1)", color: "#D72638", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>✗ {resumen.errores} errores</span>}
+                <span style={{ padding: "6px 12px", background: theme.cardAlt, color: theme.muted, borderRadius: "8px", fontSize: "12px", fontWeight: 600 }}>{resumen.total} filas total</span>
+              </div>
+              <button onClick={limpiarImport} style={{ padding: "6px 14px", background: theme.cardAlt, color: theme.muted, fontSize: "12px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Nueva importación</button>
+            </div>
+          )}
+
+          {importError && <p style={{ color: "#D72638", fontSize: "13px", marginTop: "10px", margin: "10px 0 0" }}>{importError}</p>}
+
+          <p style={{ fontSize: "11px", color: theme.muted, margin: "12px 0 0" }}>
+            Columnas requeridas: <code>codigo</code>, <code>nombre</code>, <code>precio</code>, <code>stock</code> — opcionales: <code>descripcion</code>, <code>unidad</code>, <code>stock_minimo</code>
+          </p>
         </div>
       )}
 

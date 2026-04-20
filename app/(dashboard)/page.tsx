@@ -41,10 +41,11 @@ export default function DashboardPage() {
 
   async function loadAll(session: Usuario | null) {
     setLoading(true)
-    const hoy      = new Date().toISOString().split("T")[0]
-    const ayer     = new Date(Date.now() - 86400000).toISOString().split("T")[0]
-    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
-    const hace30   = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0]
+    const col = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
+    const hoy      = col(new Date())
+    const ayer     = col(new Date(Date.now() - 86400000))
+    const inicioMes = col(new Date(new Date().getFullYear(), new Date().getMonth(), 1)) + "T00:00:00-05:00"
+    const hace30   = col(new Date(Date.now() - 30 * 86400000))
 
     const isAdmin = session?.perfil?.nombre === "Administrador"
 
@@ -102,11 +103,11 @@ export default function DashboardPage() {
     // Pedidos por día (últimos 30 días)
     const diaMap: Record<string, number> = {}
     for (let i = 29; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000).toISOString().split("T")[0]
+      const d = new Date(Date.now() - i * 86400000).toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
       diaMap[d] = 0
     }
     ;(pedidos30 || []).forEach((p: any) => {
-      const d = p.created_at.split("T")[0]
+      const d = new Date(p.created_at).toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
       if (diaMap[d] !== undefined) diaMap[d]++
     })
 

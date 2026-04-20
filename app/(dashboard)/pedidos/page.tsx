@@ -14,7 +14,8 @@ const COLOR_ESTADO: Record<string, { bg: string; color: string }> = {
   cancelado:  { bg: "rgba(215,38,56,0.15)",   color: "#D72638" },
 }
 
-function hoy() { return new Date().toISOString().split("T")[0] }
+// toISOString() usa UTC — Colombia es UTC-5, por eso aparece el día siguiente
+function hoy() { return new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" }) }
 
 export default function PedidosPage() {
   const theme = useTheme()
@@ -34,9 +35,9 @@ export default function PedidosPage() {
   async function load() {
     setLoading(true)
     // fechaFin + 1 día para incluir todo ese día
-    const fin = new Date(fechaFin)
+    const fin = new Date(fechaFin + "T00:00:00-05:00")
     fin.setDate(fin.getDate() + 1)
-    const finStr = fin.toISOString().split("T")[0]
+    const finStr = fin.toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
     let q = supabase
       .from("pedidos")
@@ -68,7 +69,7 @@ export default function PedidosPage() {
     const d = new Date()
     const lunes = new Date(d)
     lunes.setDate(d.getDate() - d.getDay() + 1)
-    setFechaIni(lunes.toISOString().split("T")[0])
+    setFechaIni(lunes.toLocaleDateString("en-CA", { timeZone: "America/Bogota" }))
     setFechaFin(hoy())
   }
   function irMes() {

@@ -12,7 +12,7 @@ export default function EstadisticasPage() {
   const [topProductos, setTopProductos] = useState<TopItem[]>([])
   const [resumen, setResumen] = useState({ totalMes: 0, pedidosMes: 0, ticketPromedio: 0, entregados: 0 })
   const [loading, setLoading] = useState(true)
-  const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7))
+  const [mes, setMes] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" }).slice(0, 7))
 
   useEffect(() => { load() }, [mes])
 
@@ -21,7 +21,7 @@ export default function EstadisticasPage() {
     const inicio = mes + "-01"
     const fin = new Date(mes + "-01")
     fin.setMonth(fin.getMonth() + 1)
-    const finStr = fin.toISOString().split("T")[0]
+    const finStr = fin.toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
 
     const { data: pedidos } = await supabase
       .from("pedidos")

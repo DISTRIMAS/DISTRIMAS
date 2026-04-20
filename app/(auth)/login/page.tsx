@@ -51,39 +51,39 @@ export default function LoginPage() {
         {/* Línea decorativa horizontal */}
         <div style={{ position: "absolute", bottom: "120px", left: 0, right: 0, height: "1px", background: "rgba(255,255,255,0.08)" }} />
 
-        <div style={{ position: "relative", zIndex: 2, textAlign: "center", maxWidth: "340px" }}>
-          {/* Logo */}
+        <div style={{ position: "relative", zIndex: 2, textAlign: "center", width: "100%", maxWidth: "420px" }}>
+          {/* Logo grande */}
           <div style={{
-            width: "88px", height: "88px", borderRadius: "20px",
+            width: "160px", height: "160px", borderRadius: "28px",
             background: "rgba(255,255,255,0.15)",
-            backdropFilter: "blur(4px)",
-            border: "1px solid rgba(255,255,255,0.2)",
+            backdropFilter: "blur(6px)",
+            border: "1px solid rgba(255,255,255,0.25)",
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 28px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.2)", overflow: "hidden",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.25)", overflow: "hidden",
           }}>
             {logoUrl
-              ? <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "10px" }} />
-              : <span style={{ color: "white", fontWeight: "bold", fontSize: "34px" }}>D</span>
+              ? <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "16px" }} />
+              : <span style={{ color: "white", fontWeight: "bold", fontSize: "72px" }}>D</span>
             }
           </div>
 
           <h1 style={{ fontSize: "30px", fontWeight: 700, color: "white", margin: "0 0 10px", letterSpacing: "-0.5px" }}>Distrimas SC</h1>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "14px", margin: "0 0 44px", lineHeight: 1.7 }}>
+          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "14px", margin: "0 0 36px", lineHeight: 1.7 }}>
             Sistema de gestión de pedidos,<br />clientes e inventario
           </p>
 
-          {/* Features */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", textAlign: "left" }}>
+          {/* Features — grid 2x2 horizontal */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             {[
               { icon: "📦", label: "Pedidos en tiempo real" },
               { icon: "📊", label: "Control de inventario" },
               { icon: "📈", label: "Estadísticas de ventas" },
               { icon: "👥", label: "Gestión de clientes" },
             ].map(item => (
-              <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "10px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <span style={{ fontSize: "16px" }}>{item.icon}</span>
-                <span style={{ color: "rgba(255,255,255,0.88)", fontSize: "13.5px", fontWeight: 500 }}>{item.label}</span>
+              <div key={item.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", padding: "14px 10px", borderRadius: "12px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", textAlign: "center" }}>
+                <span style={{ fontSize: "22px" }}>{item.icon}</span>
+                <span style={{ color: "rgba(255,255,255,0.88)", fontSize: "12px", fontWeight: 500, lineHeight: 1.4 }}>{item.label}</span>
               </div>
             ))}
           </div>

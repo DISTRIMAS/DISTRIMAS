@@ -1,7 +1,8 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { login } from "@/lib/auth"
+import { supabase } from "@/lib/supabase"
 
 const BRAND = "#C0392B"        // rojo más apagado y elegante
 const BRAND_DARK = "#922B21"   // tono oscuro para gradiente
@@ -13,6 +14,12 @@ export default function LoginPage() {
   const [error, setError]       = useState("")
   const [loading, setLoading]   = useState(false)
   const [verPass, setVerPass]   = useState(false)
+  const [logoUrl, setLogoUrl]   = useState("")
+
+  useEffect(() => {
+    supabase.from("configuraciones").select("logo_url").limit(1).single()
+      .then(({ data }) => { if (data?.logo_url) setLogoUrl(data.logo_url) })
+  }, [])
 
   async function handleLogin() {
     setError("")
@@ -47,15 +54,19 @@ export default function LoginPage() {
         <div style={{ position: "relative", zIndex: 2, textAlign: "center", maxWidth: "340px" }}>
           {/* Logo */}
           <div style={{
-            width: "80px", height: "80px", borderRadius: "20px",
+            width: "88px", height: "88px", borderRadius: "20px",
             background: "rgba(255,255,255,0.15)",
             backdropFilter: "blur(4px)",
             border: "1px solid rgba(255,255,255,0.2)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "white", fontWeight: "bold", fontSize: "34px",
-            margin: "0 auto 28px", letterSpacing: "-1px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
-          }}>D</div>
+            margin: "0 auto 28px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.2)", overflow: "hidden",
+          }}>
+            {logoUrl
+              ? <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "10px" }} />
+              : <span style={{ color: "white", fontWeight: "bold", fontSize: "34px" }}>D</span>
+            }
+          </div>
 
           <h1 style={{ fontSize: "30px", fontWeight: 700, color: "white", margin: "0 0 10px", letterSpacing: "-0.5px" }}>Distrimas SC</h1>
           <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "14px", margin: "0 0 44px", lineHeight: 1.7 }}>
@@ -96,11 +107,16 @@ export default function LoginPage() {
           <div className="login-mobile-logo" style={{ display: "none", alignItems: "center", gap: "12px", marginBottom: "36px" }}>
             <div style={{
               width: "44px", height: "44px", borderRadius: "12px",
-              background: `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})`,
+              background: logoUrl ? "white" : `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "white", fontWeight: "bold", fontSize: "20px",
-              boxShadow: `0 4px 12px rgba(192,57,43,0.35)`
-            }}>D</div>
+              overflow: "hidden", border: logoUrl ? `1px solid #E5E7EB` : "none",
+              boxShadow: `0 4px 12px rgba(192,57,43,0.25)`
+            }}>
+              {logoUrl
+                ? <img src={logoUrl} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain", padding: "4px" }} />
+                : <span style={{ color: "white", fontWeight: "bold", fontSize: "20px" }}>D</span>
+              }
+            </div>
             <div>
               <p style={{ fontWeight: 700, color: "#141720", fontSize: "16px", margin: 0 }}>Distrimas SC</p>
               <p style={{ color: "#9CA3AF", fontSize: "11px", margin: 0 }}>Sistema de gestión</p>

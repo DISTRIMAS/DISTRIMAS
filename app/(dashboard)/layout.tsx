@@ -2,51 +2,9 @@
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { getSession, logout } from "@/lib/auth"
-import { supabase } from "@/lib/supabase"
 import { Usuario } from "@/lib/types"
 import { ThemeContext, DARK, LIGHT } from "@/lib/theme-context"
-
-const PASOS_TUTORIAL = [
-  { titulo: "Bienvenido a Distrimas SC", desc: "Este es tu panel de gestión. Desde aquí podrás tomar pedidos, consultar clientes y revisar el inventario." },
-  { titulo: "Tus clientes", desc: "En la sección Clientes encuentras todas las tiendas asignadas. Puedes buscar por nombre, municipio o código." },
-  { titulo: "Crear un pedido", desc: "Ve a Pedidos → Nuevo pedido. Busca la tienda, agrega los productos y confirma. Así de fácil." },
-  { titulo: "Consultar inventario", desc: "En Inventario ves el stock actual de cada producto. Los que aparecen en amarillo tienen stock bajo." },
-  { titulo: "¡Listo para empezar!", desc: "Ya conoces lo básico. Si tienes dudas, consulta con tu administrador. ¡Mucho éxito!" },
-]
-
-function Tutorial({ user, onClose }: { user: Usuario; onClose: () => void }) {
-  const [paso, setPaso] = useState(0)
-  const p = PASOS_TUTORIAL[paso]
-  const ultimo = paso === PASOS_TUTORIAL.length - 1
-
-  async function finalizar() {
-    await supabase.from("usuarios").update({ primer_ingreso: false }).eq("id", user.id)
-    const raw = localStorage.getItem("distrimas_user")
-    if (raw) localStorage.setItem("distrimas_user", JSON.stringify({ ...JSON.parse(raw), primer_ingreso: false }))
-    onClose()
-  }
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-      <div style={{ background: "#171B25", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "20px", padding: "40px 32px", width: "100%", maxWidth: "460px", textAlign: "center" }}>
-        <div style={{ width: "56px", height: "56px", borderRadius: "14px", background: "#D72638", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: "24px" }}>👋</div>
-        <h3 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 10px", color: "white" }}>{p.titulo}</h3>
-        <p style={{ color: "#8B91A8", fontSize: "14px", lineHeight: 1.6, margin: "0 0 28px" }}>{p.desc}</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "28px" }}>
-          {PASOS_TUTORIAL.map((_, i) => (
-            <div key={i} style={{ width: i === paso ? "20px" : "8px", height: "8px", borderRadius: "99px", background: i === paso ? "#D72638" : "#2A3044", transition: "width 0.3s" }} />
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: "12px" }}>
-          {paso > 0 && <button onClick={() => setPaso(p2 => p2 - 1)} style={{ flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", color: "#F0F2F7", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>Anterior</button>}
-          <button onClick={ultimo ? finalizar : () => setPaso(p2 => p2 + 1)} style={{ flex: 1, padding: "11px", background: "#D72638", color: "white", fontWeight: 600, fontSize: "14px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
-            {ultimo ? "¡Comenzar!" : "Siguiente"}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+import TourGuia from "@/components/TourGuia"
 
 const MENUS_ADMIN = [
   { section: "Principal" },
@@ -111,7 +69,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => { setSidebarOpen(false) }, [pathname])
 
   if (!user) return null
-  if (tutorial) return <Tutorial user={user} onClose={() => setTutorial(false)} />
 
   const theme = darkMode ? DARK : LIGHT
   const isAdmin = user.perfil?.nombre === "Administrador"
@@ -162,6 +119,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span style={{ position: "absolute", width: "14px", height: "14px", borderRadius: "50%", top: "2px", left: darkMode ? "2px" : "18px", background: darkMode ? "#555C74" : "#fff", transition: "left 0.2s" }} />
           </div>
         </button>
+        <button onClick={() => setTutorial(true)} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "8px", fontSize: "13.5px", color: theme.muted, background: "none", border: "none", cursor: "pointer", width: "100%" }}>
+          📖 Ver instructivo
+        </button>
         <button onClick={() => { logout(); router.push("/login") }} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 12px", borderRadius: "8px", fontSize: "13.5px", color: theme.muted, background: "none", border: "none", cursor: "pointer", width: "100%" }}>
           🚪 Cerrar sesión
         </button>
@@ -171,6 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ThemeContext.Provider value={theme}>
+      {tutorial && <TourGuia user={user} onClose={() => setTutorial(false)} />}
       <div style={{ display: "flex", minHeight: "100vh", background: theme.bg, color: theme.text, fontFamily: "system-ui, sans-serif" }}>
 
         {/* Overlay móvil */}

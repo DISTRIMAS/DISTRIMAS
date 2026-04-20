@@ -271,23 +271,46 @@ export default function NuevoPedidoPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px", gap: "8px" }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontWeight: 600, fontSize: "14px", margin: "0 0 2px", color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.producto.nombre}</p>
-                    <p style={{ color: theme.muted, fontSize: "12px", margin: 0 }}>{item.producto.codigo} · {item.producto.unidad}</p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <p style={{ color: theme.muted, fontSize: "12px", margin: 0 }}>{item.producto.codigo} · {item.producto.unidad}</p>
+                      {/* Stock disponible siempre visible */}
+                      <span style={{
+                        padding: "2px 8px", borderRadius: "99px", fontSize: "11px", fontWeight: 700,
+                        background: item.producto.stock <= 0 ? "rgba(215,38,56,0.12)" : item.cantidad > item.producto.stock ? "rgba(245,158,11,0.15)" : "rgba(34,197,94,0.12)",
+                        color: item.producto.stock <= 0 ? "#D72638" : item.cantidad > item.producto.stock ? "#d97706" : "#16a34a",
+                      }}>
+                        {item.producto.stock <= 0 ? "Agotado" : `Stock: ${item.producto.stock}`}
+                      </span>
+                    </div>
                   </div>
                   <button onClick={() => quitarItem(item.producto.id)} style={{ background: "rgba(215,38,56,0.1)", border: "none", color: "#D72638", cursor: "pointer", fontSize: "13px", fontWeight: 600, borderRadius: "6px", padding: "4px 8px", flexShrink: 0 }}>Quitar</button>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                   {/* Cantidad con +/- */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <p style={{ fontSize: "11px", color: theme.muted, margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Cant.</p>
-                    <button style={btnQty} onClick={() => restar(item.producto.id)}>−</button>
-                    <input
-                      type="number"
-                      value={item.cantidad}
-                      min={1}
-                      onChange={e => setCantidad(item.producto.id, e.target.value)}
-                      style={{ width: "52px", textAlign: "center", background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "6px", color: theme.text, padding: "5px 4px", fontSize: "15px", fontWeight: 600, outline: "none" }}
-                    />
-                    <button style={btnQty} onClick={() => sumar(item.producto.id)}>+</button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <p style={{ fontSize: "11px", color: theme.muted, margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Cant.</p>
+                      <button style={btnQty} onClick={() => restar(item.producto.id)}>−</button>
+                      <input
+                        type="number"
+                        value={item.cantidad}
+                        min={1}
+                        onChange={e => setCantidad(item.producto.id, e.target.value)}
+                        style={{ width: "52px", textAlign: "center", background: item.cantidad > item.producto.stock ? "rgba(245,158,11,0.1)" : theme.card, border: `1.5px solid ${item.cantidad > item.producto.stock ? "#f59e0b" : theme.border}`, borderRadius: "6px", color: theme.text, padding: "5px 4px", fontSize: "15px", fontWeight: 600, outline: "none" }}
+                      />
+                      <button style={btnQty} onClick={() => sumar(item.producto.id)}>+</button>
+                    </div>
+                    {/* Advertencia inline justo debajo de la cantidad */}
+                    {item.cantidad > item.producto.stock && item.producto.stock > 0 && (
+                      <p style={{ fontSize: "11px", color: "#d97706", margin: 0, fontWeight: 600 }}>
+                        ⚠️ Ojo: solo hay {item.producto.stock} en stock
+                      </p>
+                    )}
+                    {item.producto.stock <= 0 && (
+                      <p style={{ fontSize: "11px", color: "#D72638", margin: 0, fontWeight: 600 }}>
+                        🚨 Este producto está agotado
+                      </p>
+                    )}
                   </div>
                   {/* Precio */}
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>

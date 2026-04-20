@@ -188,32 +188,66 @@ export default function InventarioPage() {
 
       {/* Panel importación — solo admin */}
       {isAdmin && (
-        <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "12px", padding: "20px", marginBottom: "16px" }}>
-          <p style={{ fontSize: "13px", fontWeight: 700, color: theme.text, margin: "0 0 14px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span>📥</span> Importar inventario desde Excel
-          </p>
+        <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: "14px", padding: "20px 24px", marginBottom: "16px" }}>
 
-          {/* Selector */}
+          {/* Encabezado */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <div style={{ width: "34px", height: "34px", borderRadius: "9px", background: "rgba(215,38,56,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>📥</div>
+            <div>
+              <p style={{ fontSize: "14px", fontWeight: 700, color: theme.text, margin: 0 }}>Importar inventario desde Excel</p>
+              <p style={{ fontSize: "11px", color: theme.muted, margin: 0 }}>Solo actualiza stock y precio de existentes · Nunca borra productos</p>
+            </div>
+          </div>
+
+          {/* Zona de selección */}
           {!archivoNombre ? (
-            <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 18px", background: "rgba(59,130,246,0.1)", color: "#3b82f6", fontWeight: 600, fontSize: "13px", borderRadius: "8px", border: "1px dashed rgba(59,130,246,0.4)", cursor: "pointer" }}>
-              <span style={{ fontSize: "16px" }}>⬆️</span> Seleccionar archivo Excel
+            <label style={{
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              gap: "10px", padding: "28px 20px",
+              background: theme.cardAlt, borderRadius: "10px",
+              border: `2px dashed ${theme.border}`,
+              cursor: "pointer", transition: "border-color 0.2s",
+            }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "#D72638")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = theme.border)}
+            >
+              <span style={{ fontSize: "32px" }}>📂</span>
+              <div style={{ textAlign: "center" }}>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: theme.text, margin: "0 0 4px" }}>Seleccionar archivo Excel</p>
+                <p style={{ fontSize: "12px", color: theme.muted, margin: 0 }}>Formatos soportados: .xlsx, .xls</p>
+              </div>
+              <div style={{ padding: "8px 20px", background: "#D72638", color: "white", fontWeight: 700, fontSize: "13px", borderRadius: "8px" }}>
+                Elegir archivo
+              </div>
               <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={seleccionarArchivo} style={{ display: "none" }} />
             </label>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              {/* Nombre archivo */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 14px", background: theme.cardAlt, borderRadius: "8px", border: `1px solid ${theme.border}` }}>
-                <span style={{ fontSize: "16px" }}>📄</span>
-                <span style={{ fontSize: "13px", color: theme.text, fontWeight: 500 }}>{archivoNombre}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+
+              {/* Archivo seleccionado */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", background: "rgba(215,38,56,0.06)", borderRadius: "10px", border: "1px solid rgba(215,38,56,0.2)" }}>
+                <span style={{ fontSize: "22px" }}>📄</span>
+                <div style={{ flex: 1, overflow: "hidden" }}>
+                  <p style={{ fontSize: "13px", fontWeight: 600, color: theme.text, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{archivoNombre}</p>
+                  <p style={{ fontSize: "11px", color: theme.muted, margin: 0 }}>Listo para procesar</p>
+                </div>
                 {!procesando && (
-                  <button onClick={limpiarImport} style={{ background: "none", border: "none", cursor: "pointer", color: theme.muted, fontSize: "14px", padding: "0 0 0 4px", lineHeight: 1 }}>✕</button>
+                  <button onClick={limpiarImport} style={{ background: "none", border: `1px solid ${theme.border}`, borderRadius: "6px", cursor: "pointer", color: theme.muted, fontSize: "12px", padding: "4px 10px", whiteSpace: "nowrap" }}>
+                    Cambiar
+                  </button>
                 )}
               </div>
 
               {/* Botón procesar */}
               {!procesando && !resumen && (
-                <button onClick={procesarExcel} style={{ padding: "9px 20px", background: "#22c55e", color: "white", fontWeight: 700, fontSize: "13px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
-                  Procesar →
+                <button onClick={procesarExcel} style={{
+                  width: "100%", padding: "12px",
+                  background: "#D72638", color: "white",
+                  fontWeight: 700, fontSize: "14px", borderRadius: "10px",
+                  border: "none", cursor: "pointer",
+                  boxShadow: "0 4px 12px rgba(215,38,56,0.3)",
+                }}>
+                  Procesar importación →
                 </button>
               )}
             </div>
@@ -221,30 +255,71 @@ export default function InventarioPage() {
 
           {/* Barra de progreso */}
           {procesando && (
-            <div style={{ marginTop: "14px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: theme.muted, marginBottom: "6px" }}>
-                <span>Procesando...</span><span>{progreso}%</span>
+            <div style={{ marginTop: "16px", padding: "16px", background: theme.cardAlt, borderRadius: "10px", border: `1px solid ${theme.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 600, color: theme.text, marginBottom: "10px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: "#D72638", animation: "pulse 1s infinite" }} />
+                  Procesando filas...
+                </span>
+                <span style={{ color: "#D72638" }}>{progreso}%</span>
               </div>
-              <div style={{ height: "8px", background: theme.cardAlt, borderRadius: "99px", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${progreso}%`, background: "linear-gradient(90deg, #22c55e, #16a34a)", borderRadius: "99px", transition: "width 0.3s ease" }} />
+              <div style={{ height: "10px", background: theme.bg, borderRadius: "99px", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${progreso}%`, background: "linear-gradient(90deg, #D72638, #a01c29)", borderRadius: "99px", transition: "width 0.4s ease" }} />
               </div>
             </div>
           )}
 
           {/* Resumen final */}
           {resumen && (
-            <div style={{ marginTop: "14px", display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", flex: 1 }}>
-                <span style={{ padding: "6px 12px", background: "rgba(34,197,94,0.12)", color: "#22c55e", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>✓ {resumen.nuevos} nuevos</span>
-                <span style={{ padding: "6px 12px", background: "rgba(59,130,246,0.12)", color: "#3b82f6", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>↑ {resumen.actualizados} actualizados</span>
-                {resumen.errores > 0 && <span style={{ padding: "6px 12px", background: "rgba(215,38,56,0.1)", color: "#D72638", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>✗ {resumen.errores} errores</span>}
-                <span style={{ padding: "6px 12px", background: theme.cardAlt, color: theme.muted, borderRadius: "8px", fontSize: "12px", fontWeight: 600 }}>{resumen.total} filas total</span>
+            <div style={{ marginTop: "16px" }}>
+              {/* Banner éxito/advertencia */}
+              <div style={{
+                padding: "12px 16px", borderRadius: "10px", marginBottom: "12px",
+                background: resumen.errores === resumen.total ? "rgba(215,38,56,0.08)" : "rgba(34,197,94,0.08)",
+                border: `1px solid ${resumen.errores === resumen.total ? "rgba(215,38,56,0.25)" : "rgba(34,197,94,0.25)"}`,
+              }}>
+                <p style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 2px", color: resumen.errores === resumen.total ? "#D72638" : "#16a34a" }}>
+                  {resumen.errores === resumen.total ? "✗ No se pudo importar ningún registro" : "✓ Importación completada"}
+                </p>
+                <p style={{ fontSize: "12px", color: theme.muted, margin: 0 }}>
+                  {resumen.errores === resumen.total
+                    ? "Verifica que el archivo tenga la columna 'codigo' en la primera fila."
+                    : `Se procesaron ${resumen.total} filas del archivo.`}
+                </p>
               </div>
-              <button onClick={limpiarImport} style={{ padding: "6px 14px", background: theme.cardAlt, color: theme.muted, fontSize: "12px", borderRadius: "8px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>Nueva importación</button>
+
+              {/* Tarjetas resumen */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "10px", marginBottom: "12px" }}>
+                <div style={{ padding: "12px", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "10px", textAlign: "center" }}>
+                  <p style={{ fontSize: "22px", fontWeight: 800, color: "#22c55e", margin: "0 0 2px" }}>{resumen.nuevos}</p>
+                  <p style={{ fontSize: "11px", color: theme.muted, margin: 0, fontWeight: 600 }}>Nuevos</p>
+                </div>
+                <div style={{ padding: "12px", background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: "10px", textAlign: "center" }}>
+                  <p style={{ fontSize: "22px", fontWeight: 800, color: "#3b82f6", margin: "0 0 2px" }}>{resumen.actualizados}</p>
+                  <p style={{ fontSize: "11px", color: theme.muted, margin: 0, fontWeight: 600 }}>Actualizados</p>
+                </div>
+                <div style={{ padding: "12px", background: resumen.errores > 0 ? "rgba(215,38,56,0.08)" : theme.cardAlt, border: `1px solid ${resumen.errores > 0 ? "rgba(215,38,56,0.2)" : theme.border}`, borderRadius: "10px", textAlign: "center" }}>
+                  <p style={{ fontSize: "22px", fontWeight: 800, color: resumen.errores > 0 ? "#D72638" : theme.muted, margin: "0 0 2px" }}>{resumen.errores}</p>
+                  <p style={{ fontSize: "11px", color: theme.muted, margin: 0, fontWeight: 600 }}>Errores</p>
+                </div>
+                <div style={{ padding: "12px", background: theme.cardAlt, border: `1px solid ${theme.border}`, borderRadius: "10px", textAlign: "center" }}>
+                  <p style={{ fontSize: "22px", fontWeight: 800, color: theme.text, margin: "0 0 2px" }}>{resumen.total}</p>
+                  <p style={{ fontSize: "11px", color: theme.muted, margin: 0, fontWeight: 600 }}>Total filas</p>
+                </div>
+              </div>
+
+              <button onClick={limpiarImport} style={{ width: "100%", padding: "10px", background: theme.cardAlt, color: theme.text, fontWeight: 600, fontSize: "13px", borderRadius: "10px", border: `1px solid ${theme.border}`, cursor: "pointer" }}>
+                Nueva importación
+              </button>
             </div>
           )}
 
-          {importError && <p style={{ color: "#D72638", fontSize: "13px", marginTop: "10px", margin: "10px 0 0" }}>{importError}</p>}
+          {importError && (
+            <div style={{ marginTop: "14px", padding: "10px 14px", background: "rgba(215,38,56,0.08)", border: "1px solid rgba(215,38,56,0.25)", borderRadius: "8px" }}>
+              <p style={{ color: "#D72638", fontSize: "13px", fontWeight: 600, margin: "0 0 2px" }}>✗ Error al procesar</p>
+              <p style={{ color: theme.muted, fontSize: "12px", margin: 0 }}>{importError}</p>
+            </div>
+          )}
 
           <p style={{ fontSize: "11px", color: theme.muted, margin: "12px 0 0" }}>
             Columnas requeridas: <code>codigo</code>, <code>nombre</code>, <code>precio</code>, <code>stock</code> — opcionales: <code>descripcion</code>, <code>unidad</code>, <code>stock_minimo</code>

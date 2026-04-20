@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const [diasData, setDiasData]           = useState<DiaItem[]>([])
   const [recientes, setRecientes]         = useState<any[]>([])
   const [loading, setLoading]             = useState(true)
+  const [alertaStock, setAlertaStock]     = useState<{ agotados: any[]; bajos: any[] }>({ agotados: [], bajos: [] })
+  const [alertaCerrada, setAlertaCerrada] = useState(false)
 
   useEffect(() => {
     const session = getSession()
@@ -54,7 +56,7 @@ export default function DashboardPage() {
       { count: pedidosAyer },
       { data: pedidosMes },
       { count: tiendas },
-      { count: bajo },
+      { data: bajo },
       { data: pedidos30 },
       { data: recientesRaw },
     ] = await Promise.all([
@@ -62,10 +64,17 @@ export default function DashboardPage() {
       supabase.from("pedidos").select("id", { count: "exact", head: true }).gte("created_at", ayer).lt("created_at", hoy),
       supabase.from("pedidos").select("total, usuario:usuarios(nombre), cliente:clientes(nombre, municipio), items:pedido_items(cantidad, precio_unitario, producto:productos(nombre))").gte("created_at", inicioMes).neq("estado", "cancelado"),
       supabase.from("clientes").select("id", { count: "exact", head: true }).eq("activo", true),
-      supabase.from("productos").select("id", { count: "exact", head: true }).eq("activo", true).lt("stock_minimo", 99999).filter("stock", "lt", "stock_minimo"),
+      supabase.from("productos").select("id,nombre,stock,stock_minimo").eq("activo", true),
       supabase.from("pedidos").select("created_at").gte("created_at", hace30).neq("estado", "cancelado"),
       supabase.from("pedidos").select("id, total, estado, created_at, cliente:clientes(nombre), usuario:usuarios(nombre)").order("created_at", { ascending: false }).limit(5),
     ])
+
+    // Alertas de stock
+    const todosProductos = bajo || []
+    const agotados = todosProductos.filter((p: any) => p.stock <= 0)
+    const bajos    = todosProductos.filter((p: any) => p.stock > 0 && p.stock < p.stock_minimo)
+    setAlertaStock({ agotados, bajos })
+    setAlertaCerrada(false)
 
     // Ventas del mes
     const ventasMes = (pedidosMes || []).reduce((a: number, p: any) => a + (p.total || 0), 0)
@@ -114,7 +123,7 @@ export default function DashboardPage() {
     const sort = <T extends TopItem>(m: Record<string, T>) =>
       Object.values(m).sort((a, b) => b.total - a.total).slice(0, 5)
 
-    setStats({ pedidosHoy: pedidosHoy || 0, pedidosAyer: pedidosAyer || 0, ventasMes, tiendasActivas: tiendas || 0, stockBajo: bajo || 0 })
+    setStats({ pedidosHoy: pedidosHoy || 0, pedidosAyer: pedidosAyer || 0, ventasMes, tiendasActivas: tiendas || 0, stockBajo: agotados.length + bajos.length })
     setTopVendedores(sort(vendMap))
     setTopTiendas(sort(tiendaMap as any) as any)
     setTopProductos(sort(prodMap))
@@ -179,6 +188,39 @@ export default function DashboardPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      {/* Banner de alertas de stock — persistente hasta reponer */}
+      {!alertaCerrada && (alertaStock.agotados.length > 0 || alertaStock.bajos.length > 0) && (
+        <div style={{
+          background: alertaStock.agotados.length > 0 ? "rgba(215,38,56,0.08)" : "rgba(245,158,11,0.08)",
+          border: `1px solid ${alertaStock.agotados.length > 0 ? "rgba(215,38,56,0.3)" : "rgba(245,158,11,0.3)"}`,
+          borderRadius: "12px", padding: "16px 20px",
+        }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px", color: alertaStock.agotados.length > 0 ? "#D72638" : "#d97706" }}>
+                {alertaStock.agotados.length > 0 ? "🚨 Productos agotados y con stock bajo" : "⚠️ Productos con stock bajo"}
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {alertaStock.agotados.map((p: any) => (
+                  <span key={p.id} style={{ padding: "4px 10px", background: "rgba(215,38,56,0.12)", color: "#D72638", borderRadius: "99px", fontSize: "12px", fontWeight: 600 }}>
+                    🔴 {p.nombre} — AGOTADO
+                  </span>
+                ))}
+                {alertaStock.bajos.map((p: any) => (
+                  <span key={p.id} style={{ padding: "4px 10px", background: "rgba(245,158,11,0.12)", color: "#d97706", borderRadius: "99px", fontSize: "12px", fontWeight: 600 }}>
+                    🟡 {p.nombre} — {p.stock} uds.
+                  </span>
+                ))}
+              </div>
+              <p style={{ fontSize: "11px", color: theme.muted, margin: "10px 0 0" }}>
+                Esta alerta se mantendrá visible hasta que el inventario sea actualizado.
+              </p>
+            </div>
+            <button onClick={() => setAlertaCerrada(true)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.muted, fontSize: "18px", padding: "0", flexShrink: 0, lineHeight: 1 }}>✕</button>
+          </div>
+        </div>
+      )}
 
       {/* Saludo */}
       <div>

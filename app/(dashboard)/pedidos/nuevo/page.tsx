@@ -77,22 +77,37 @@ export default function NuevoPedidoPage() {
   function quitarItem(id: string) { setItems(items.filter(i => i.producto.id !== id)) }
 
   function sumar(id: string) {
-    setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: i.cantidad + 1 } : i))
+    const item = items.find(i => i.producto.id === id)
+    if (!item) return
+    const nuevaCant = item.cantidad + 1
+    if (nuevaCant > item.producto.stock) {
+      setError(`⚠️ Stock insuficiente: "${item.producto.nombre}" solo tiene ${item.producto.stock} unidades disponibles.`)
+      return
+    }
+    setError("")
+    setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: nuevaCant } : i))
   }
   function restar(id: string) {
     const item = items.find(i => i.producto.id === id)
     if (!item) return
-    if (item.cantidad <= 1) return  // no elimina, simplemente no baja de 1
+    if (item.cantidad <= 1) return
+    setError("")
     setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: i.cantidad - 1 } : i))
   }
   function setCantidad(id: string, val: string) {
     const n = parseInt(val)
     if (isNaN(n) || val === "") {
-      // mantiene el item con cantidad 1 mientras el campo está vacío
       setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: 1 } : i))
       return
     }
     if (n < 1) return
+    const item = items.find(i => i.producto.id === id)
+    if (item && n > item.producto.stock) {
+      setError(`⚠️ Stock insuficiente: "${item.producto.nombre}" solo tiene ${item.producto.stock} unidades disponibles.`)
+      setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: item.producto.stock } : i))
+      return
+    }
+    setError("")
     setItems(items.map(i => i.producto.id === id ? { ...i, cantidad: n } : i))
   }
   function cambiarPrecio(id: string, val: string) {
@@ -105,6 +120,8 @@ export default function NuevoPedidoPage() {
   async function guardar(estado: "borrador" | "confirmado") {
     if (!clienteId) return setError("Selecciona un cliente")
     if (items.length === 0) return setError("Agrega al menos un producto")
+    const sinStock = items.find(i => i.cantidad > i.producto.stock)
+    if (sinStock) return setError(`⚠️ "${sinStock.producto.nombre}" supera el stock disponible (${sinStock.producto.stock} unidades). Ajusta la cantidad.`)
     setSaving(true); setError("")
     const user = getSession()
 

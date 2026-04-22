@@ -6,7 +6,7 @@ import { Usuario } from "@/lib/types"
 import { useTheme } from "@/lib/theme-context"
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell,
 } from "recharts"
 
 const COLORS = ["#D72638", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7"]
@@ -20,12 +20,15 @@ interface Stats {
   ventasMes: number
   tiendasActivas: number
   stockBajo: number
+  tiendasVisitadas: number
+  miRanking: number
+  promedioDiario: number
 }
 
 export default function DashboardPage() {
   const theme = useTheme()
   const [user, setUser]                   = useState<Usuario | null>(null)
-  const [stats, setStats]                 = useState<Stats>({ pedidosHoy: 0, pedidosAyer: 0, ventasMes: 0, tiendasActivas: 0, stockBajo: 0 })
+  const [stats, setStats]                 = useState<Stats>({ pedidosHoy: 0, pedidosAyer: 0, ventasMes: 0, tiendasActivas: 0, stockBajo: 0, tiendasVisitadas: 0, miRanking: 0, promedioDiario: 0 })
   const [topVendedores, setTopVendedores] = useState<TopItem[]>([])
   const [topProductos, setTopProductos]   = useState<TopItem[]>([])
   const [topTiendas, setTopTiendas]       = useState<(TopItem & { municipio: string })[]>([])
@@ -51,6 +54,19 @@ export default function DashboardPage() {
     const hace30    = col(new Date(Date.now() - 30 * 86400000)) + "T00:00:00-05:00"
 
     const isAdmin = session?.perfil?.nombre === "Administrador"
+    const uid = session?.id
+
+    let qHoy = supabase.from("pedidos").select("id", { count: "exact", head: true }).gte("created_at", hoy).lt("created_at", manana)
+    let qAyer = supabase.from("pedidos").select("id", { count: "exact", head: true }).gte("created_at", ayer).lt("created_at", hoy)
+    let q30   = supabase.from("pedidos").select("created_at").gte("created_at", hace30).neq("estado", "cancelado")
+    let qRec  = supabase.from("pedidos").select("id, total, estado, created_at, cliente:clientes(nombre), usuario:usuarios(nombre)").order("created_at", { ascending: false }).limit(5)
+
+    if (!isAdmin && uid) {
+      qHoy = qHoy.eq("usuario_id", uid)
+      qAyer = qAyer.eq("usuario_id", uid)
+      q30   = q30.eq("usuario_id", uid)
+      qRec  = qRec.eq("usuario_id", uid)
+    }
 
     const [
       { count: pedidosHoy },
@@ -61,56 +77,60 @@ export default function DashboardPage() {
       { data: pedidos30 },
       { data: recientesRaw },
     ] = await Promise.all([
-      supabase.from("pedidos").select("id", { count: "exact", head: true }).gte("created_at", hoy).lt("created_at", manana),
-      supabase.from("pedidos").select("id", { count: "exact", head: true }).gte("created_at", ayer).lt("created_at", hoy),
-      supabase.from("pedidos").select("total, usuario:usuarios(nombre), cliente:clientes(nombre, municipio), items:pedido_items(cantidad, precio_unitario, producto:productos(nombre))").gte("created_at", inicioMes).neq("estado", "cancelado"),
+      qHoy,
+      qAyer,
+      supabase.from("pedidos")
+        .select("total, usuario_id, usuario:usuarios(nombre), cliente:clientes(nombre, municipio), items:pedido_items(cantidad, precio_unitario, producto:productos(nombre))")
+        .gte("created_at", inicioMes)
+        .neq("estado", "cancelado"),
       supabase.from("clientes").select("id", { count: "exact", head: true }).eq("activo", true),
       supabase.from("productos").select("id,nombre,stock,stock_minimo").eq("activo", true),
-      supabase.from("pedidos").select("created_at").gte("created_at", hace30).neq("estado", "cancelado"),
-      supabase.from("pedidos").select("id, total, estado, created_at, cliente:clientes(nombre), usuario:usuarios(nombre)").order("created_at", { ascending: false }).limit(5),
+      q30,
+      qRec,
     ])
 
-    // Alertas de stock
     const todosProductos = bajo || []
     const agotados = todosProductos.filter((p: any) => p.stock <= 0)
     const bajos    = todosProductos.filter((p: any) => p.stock > 0 && p.stock < p.stock_minimo)
     setAlertaStock({ agotados, bajos })
     setAlertaCerrada(false)
 
-    // Ventas del mes
-    const ventasMes = (pedidosMes || []).reduce((a: number, p: any) => a + (p.total || 0), 0)
+    const allPedidosMes = pedidosMes || []
+    const misPedidosMes = isAdmin ? allPedidosMes : allPedidosMes.filter((p: any) => p.usuario_id === uid)
 
-    // Top vendedores
+    const ventasMes      = misPedidosMes.reduce((a: number, p: any) => a + (p.total || 0), 0)
+    const tiendasVisitadas = new Set(misPedidosMes.map((p: any) => (p.cliente as any)?.nombre).filter(Boolean)).size
+    const diaDelMes      = new Date().getDate()
+    const promedioDiario = Math.round(ventasMes / Math.max(1, diaDelMes))
+
+    // Top vendedores siempre del mes completo (para ranking)
     const vendMap: Record<string, TopItem> = {}
-    ;(pedidosMes || []).forEach((p: any) => {
+    allPedidosMes.forEach((p: any) => {
       const nombre = (p.usuario as any)?.nombre || "Desconocido"
       if (!vendMap[nombre]) vendMap[nombre] = { nombre, total: 0, cantidad: 0 }
       vendMap[nombre].total    += p.total || 0
       vendMap[nombre].cantidad += 1
     })
 
-    // Top tiendas
+    // Top tiendas y productos filtrados por vendedor
     const tiendaMap: Record<string, TopItem & { municipio: string }> = {}
-    ;(pedidosMes || []).forEach((p: any) => {
-      const c      = p.cliente as any
-      const nombre = c?.nombre || "Desconocida"
-      if (!tiendaMap[nombre]) tiendaMap[nombre] = { nombre, municipio: c?.municipio || "", total: 0, cantidad: 0 }
-      tiendaMap[nombre].total    += p.total || 0
-      tiendaMap[nombre].cantidad += 1
-    })
-
-    // Top productos
     const prodMap: Record<string, TopItem> = {}
-    ;(pedidosMes || []).forEach((p: any) => {
+
+    misPedidosMes.forEach((p: any) => {
+      const c = p.cliente as any
+      const tc = c?.nombre || "Desconocida"
+      if (!tiendaMap[tc]) tiendaMap[tc] = { nombre: tc, municipio: c?.municipio || "", total: 0, cantidad: 0 }
+      tiendaMap[tc].total    += p.total || 0
+      tiendaMap[tc].cantidad += 1
+
       ;(p.items || []).forEach((item: any) => {
-        const nombre = item.producto?.nombre || "Desconocido"
-        if (!prodMap[nombre]) prodMap[nombre] = { nombre, total: 0, cantidad: 0 }
-        prodMap[nombre].total    += item.cantidad * item.precio_unitario
-        prodMap[nombre].cantidad += item.cantidad
+        const pn = item.producto?.nombre || "Desconocido"
+        if (!prodMap[pn]) prodMap[pn] = { nombre: pn, total: 0, cantidad: 0 }
+        prodMap[pn].total    += item.cantidad * item.precio_unitario
+        prodMap[pn].cantidad += item.cantidad
       })
     })
 
-    // Pedidos por día (últimos 30 días)
     const diaMap: Record<string, number> = {}
     for (let i = 29; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000).toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
@@ -124,8 +144,21 @@ export default function DashboardPage() {
     const sort = <T extends TopItem>(m: Record<string, T>) =>
       Object.values(m).sort((a, b) => b.total - a.total).slice(0, 5)
 
-    setStats({ pedidosHoy: pedidosHoy || 0, pedidosAyer: pedidosAyer || 0, ventasMes, tiendasActivas: tiendas || 0, stockBajo: agotados.length + bajos.length })
-    setTopVendedores(sort(vendMap))
+    const sortedVend = sort(vendMap)
+    const miNombre   = session?.nombre || ""
+    const miRankingPos = sortedVend.findIndex(v => v.nombre === miNombre) + 1
+
+    setStats({
+      pedidosHoy: pedidosHoy || 0,
+      pedidosAyer: pedidosAyer || 0,
+      ventasMes,
+      tiendasActivas: tiendas || 0,
+      stockBajo: agotados.length + bajos.length,
+      tiendasVisitadas,
+      miRanking: miRankingPos,
+      promedioDiario,
+    })
+    setTopVendedores(sortedVend)
     setTopTiendas(sort(tiendaMap as any) as any)
     setTopProductos(sort(prodMap))
     setDiasData(Object.entries(diaMap).map(([dia, pedidos]) => ({ dia: dia.slice(5), pedidos })))
@@ -134,16 +167,14 @@ export default function DashboardPage() {
   }
 
   const isAdmin = user?.perfil?.nombre === "Administrador"
+
   const pctVsAyer = stats.pedidosAyer === 0
     ? null
     : Math.round(((stats.pedidosHoy - stats.pedidosAyer) / stats.pedidosAyer) * 100)
 
-  const COLOR_ESTADO: Record<string, { bg: string; color: string }> = {
-    borrador:   { bg: "rgba(107,114,128,0.15)", color: "#6B7280" },
-    confirmado: { bg: "rgba(59,130,246,0.15)",  color: "#3b82f6" },
-    entregado:  { bg: "rgba(34,197,94,0.15)",   color: "#16a34a" },
-    cancelado:  { bg: "rgba(215,38,56,0.15)",   color: "#D72638" },
-  }
+  const rankingIcon  = stats.miRanking === 1 ? "🏆" : stats.miRanking === 2 ? "🥈" : stats.miRanking === 3 ? "🥉" : "📊"
+  const rankingLabel = stats.miRanking === 0 ? "Sin ventas aún" : `${stats.miRanking}° del mes`
+  const rankingColor = stats.miRanking === 1 ? "#D72638" : stats.miRanking === 2 ? "#6B7280" : stats.miRanking === 3 ? "#d97706" : "#3b82f6"
 
   const card = {
     background: theme.card,
@@ -152,7 +183,6 @@ export default function DashboardPage() {
     padding: "20px",
     boxShadow: theme.dark ? "none" : "0 2px 8px rgba(0,0,0,0.06)",
   }
-
   const sectionTitle = { fontSize: "14px", fontWeight: "bold" as const, color: theme.text, margin: "0 0 16px" }
 
   const CustomTooltipBar = ({ active, payload, label }: any) => {
@@ -190,7 +220,7 @@ export default function DashboardPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-      {/* Banner de alertas de stock — persistente hasta reponer */}
+      {/* Alerta de stock */}
       {!alertaCerrada && (alertaStock.agotados.length > 0 || alertaStock.bajos.length > 0) && (
         <div style={{
           background: alertaStock.agotados.length > 0 ? "rgba(215,38,56,0.08)" : "rgba(245,158,11,0.08)",
@@ -214,9 +244,6 @@ export default function DashboardPage() {
                   </span>
                 ))}
               </div>
-              <p style={{ fontSize: "11px", color: theme.muted, margin: "10px 0 0" }}>
-                Esta alerta se mantendrá visible hasta que el inventario sea actualizado.
-              </p>
             </div>
             <button onClick={() => setAlertaCerrada(true)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.muted, fontSize: "18px", padding: "0", flexShrink: 0, lineHeight: 1 }}>✕</button>
           </div>
@@ -229,16 +256,19 @@ export default function DashboardPage() {
           Hola, {user?.nombre?.split(" ")[0]} 👋
         </h2>
         <p style={{ color: theme.muted, fontSize: "13px", margin: 0 }}>
-          {isAdmin ? "Resumen general del sistema" : "Tu actividad de hoy"}
+          {isAdmin ? "Resumen general del sistema" : "Tu resumen personal del mes"}
         </p>
       </div>
 
-      {/* ── TARJETAS SUPERIORES ── */}
+      {/* ── TARJETAS ── */}
       <div className="cards-grid">
+
         {/* Pedidos hoy */}
         <div style={card}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>Pedidos hoy</p>
+            <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>
+              {isAdmin ? "Pedidos hoy" : "Mis pedidos hoy"}
+            </p>
             <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(215,38,56,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>📦</div>
           </div>
           <p style={{ fontSize: "32px", fontWeight: "bold", margin: "0 0 6px", color: theme.text }}>{stats.pedidosHoy}</p>
@@ -247,75 +277,145 @@ export default function DashboardPage() {
               {pctVsAyer >= 0 ? "▲" : "▼"} {Math.abs(pctVsAyer)}% vs ayer
             </p>
           )}
+          {pctVsAyer === null && <p style={{ fontSize: "12px", margin: 0, color: theme.muted }}>Sin pedidos ayer</p>}
         </div>
 
         {/* Ventas del mes */}
         <div style={card}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>Ventas del mes</p>
+            <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>
+              {isAdmin ? "Ventas del mes" : "Mis ventas del mes"}
+            </p>
             <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>💰</div>
           </div>
-          <p style={{ fontSize: "24px", fontWeight: "bold", margin: "0 0 6px", color: theme.text }}>${stats.ventasMes.toLocaleString("es-CO")}</p>
-          <p style={{ fontSize: "12px", margin: 0, color: theme.muted }}>Mes actual · sin cancelados</p>
+          <p style={{ fontSize: "22px", fontWeight: "bold", margin: "0 0 6px", color: theme.text }}>${stats.ventasMes.toLocaleString("es-CO")}</p>
+          {!isAdmin && (
+            <p style={{ fontSize: "12px", margin: 0, color: theme.muted }}>
+              ~${stats.promedioDiario.toLocaleString("es-CO")} / día este mes
+            </p>
+          )}
+          {isAdmin && <p style={{ fontSize: "12px", margin: 0, color: theme.muted }}>Mes actual · sin cancelados</p>}
         </div>
 
-        {/* Tiendas activas */}
-        <div style={card}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>Tiendas activas</p>
-            <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(59,130,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>🏪</div>
+        {/* 3ra tarjeta: admin → tiendas activas | vendedor → tiendas visitadas */}
+        {isAdmin ? (
+          <div style={card}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>Tiendas activas</p>
+              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(59,130,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>🏪</div>
+            </div>
+            <p style={{ fontSize: "32px", fontWeight: "bold", margin: "0 0 6px", color: theme.text }}>{stats.tiendasActivas}</p>
+            <p style={{ fontSize: "12px", margin: 0, color: theme.muted }}>Clientes habilitados</p>
           </div>
-          <p style={{ fontSize: "32px", fontWeight: "bold", margin: "0 0 6px", color: theme.text }}>{stats.tiendasActivas}</p>
-          <p style={{ fontSize: "12px", margin: 0, color: theme.muted }}>Clientes habilitados</p>
-        </div>
+        ) : (
+          <div style={card}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>Tiendas visitadas</p>
+              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(59,130,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>🏪</div>
+            </div>
+            <p style={{ fontSize: "32px", fontWeight: "bold", margin: "0 0 6px", color: theme.text }}>{stats.tiendasVisitadas}</p>
+            <p style={{ fontSize: "12px", margin: 0, color: theme.muted }}>
+              de {stats.tiendasActivas} tiendas activas este mes
+            </p>
+          </div>
+        )}
 
-        {/* Stock bajo */}
-        <div style={{ ...card, border: stats.stockBajo > 0 ? "1px solid rgba(215,38,56,0.4)" : `1px solid ${theme.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>Stock bajo</p>
-            <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: stats.stockBajo > 0 ? "rgba(215,38,56,0.12)" : "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>⚠️</div>
+        {/* 4ta tarjeta: admin → stock bajo | vendedor → mi puesto */}
+        {isAdmin ? (
+          <div style={{ ...card, border: stats.stockBajo > 0 ? "1px solid rgba(215,38,56,0.4)" : `1px solid ${theme.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>Stock bajo</p>
+              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: stats.stockBajo > 0 ? "rgba(215,38,56,0.12)" : "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>⚠️</div>
+            </div>
+            <p style={{ fontSize: "32px", fontWeight: "bold", margin: "0 0 6px", color: stats.stockBajo > 0 ? "#D72638" : theme.text }}>{stats.stockBajo}</p>
+            <p style={{ fontSize: "12px", margin: 0, color: stats.stockBajo > 0 ? "#D72638" : theme.muted, fontWeight: stats.stockBajo > 0 ? 600 : 400 }}>
+              {stats.stockBajo > 0 ? "¡Requiere atención!" : "Todo en orden"}
+            </p>
           </div>
-          <p style={{ fontSize: "32px", fontWeight: "bold", margin: "0 0 6px", color: stats.stockBajo > 0 ? "#D72638" : theme.text }}>{stats.stockBajo}</p>
-          <p style={{ fontSize: "12px", margin: 0, color: stats.stockBajo > 0 ? "#D72638" : theme.muted, fontWeight: stats.stockBajo > 0 ? 600 : 400 }}>
-            {stats.stockBajo > 0 ? "¡Requiere atención!" : "Todo en orden"}
-          </p>
-        </div>
+        ) : (
+          <div style={{ ...card, border: `1px solid ${rankingColor}40` }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, textTransform: "uppercase", letterSpacing: "0.6px", margin: 0 }}>Mi puesto</p>
+              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: `${rankingColor}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>{rankingIcon}</div>
+            </div>
+            <p style={{ fontSize: "28px", fontWeight: "bold", margin: "0 0 6px", color: rankingColor }}>{rankingLabel}</p>
+            <p style={{ fontSize: "12px", margin: 0, color: theme.muted }}>
+              {stats.miRanking === 1 ? "¡Vas primero! Mantén el ritmo" :
+               stats.miRanking === 2 ? "Cerca del primero, ¡dale más!" :
+               stats.miRanking === 3 ? "Top 3 del equipo, sigue así" :
+               stats.miRanking > 3 ? "¡Sube en el ranking vendiendo más!" :
+               "Realiza tu primer pedido del mes"}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── FILA MEDIA ── */}
       <div className="dash-mid">
 
-        {/* Top vendedores */}
+        {/* Bar chart — filtrado por vendedor */}
         <div style={card}>
-          <p style={sectionTitle}>🏆 Top vendedores del mes</p>
+          <p style={sectionTitle}>📊 {isAdmin ? "Pedidos" : "Mis pedidos"} — últimos 30 días</p>
+          {diasData.every(d => d.pedidos === 0) ? (
+            <p style={{ color: theme.muted, fontSize: "13px" }}>Sin pedidos en este período</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={diasData} margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
+                <XAxis dataKey="dia" tick={{ fontSize: 10, fill: theme.muted }} tickLine={false} axisLine={false} interval={4} />
+                <YAxis tick={{ fontSize: 10, fill: theme.muted }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltipBar />} cursor={{ fill: theme.cardAlt }} />
+                <Bar dataKey="pedidos" fill="#D72638" radius={[4, 4, 0, 0]} maxBarSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Top vendedores — admin: ranking general | vendedor: ranking con su fila resaltada */}
+        <div style={card}>
+          <p style={sectionTitle}>🏆 {isAdmin ? "Top vendedores del mes" : "Ranking del mes"}</p>
           {topVendedores.length === 0 ? (
             <p style={{ color: theme.muted, fontSize: "13px" }}>Sin datos este mes</p>
           ) : (
             <div style={{ display: "grid", gap: "10px" }}>
-              {topVendedores.map((v, i) => (
-                <div key={v.nombre} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ width: "26px", height: "26px", borderRadius: "50%", background: i === 0 ? "#D72638" : i === 1 ? "#f59e0b" : i === 2 ? "#3b82f6" : theme.cardAlt, color: i < 3 ? "white" : theme.muted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", flexShrink: 0 }}>
-                    {i + 1}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                      <span style={{ fontSize: "13px", fontWeight: 600, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.nombre}</span>
-                      <span style={{ fontSize: "12px", color: theme.muted, flexShrink: 0, marginLeft: "8px" }}>{v.cantidad} ped.</span>
+              {topVendedores.map((v, i) => {
+                const esMio = !isAdmin && v.nombre === user?.nombre
+                return (
+                  <div key={v.nombre} style={{
+                    display: "flex", alignItems: "center", gap: "12px",
+                    background: esMio ? "rgba(215,38,56,0.06)" : "transparent",
+                    borderRadius: "8px", padding: esMio ? "6px 8px" : "0",
+                    border: esMio ? "1px solid rgba(215,38,56,0.2)" : "none",
+                    margin: esMio ? "-6px -8px" : "0",
+                  }}>
+                    <span style={{ width: "26px", height: "26px", borderRadius: "50%", background: i === 0 ? "#D72638" : i === 1 ? "#f59e0b" : i === 2 ? "#3b82f6" : theme.cardAlt, color: i < 3 ? "white" : theme.muted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold", flexShrink: 0 }}>
+                      {i + 1}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "13px", fontWeight: esMio ? 700 : 600, color: esMio ? "#D72638" : theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {v.nombre}{esMio ? " (tú)" : ""}
+                        </span>
+                        <span style={{ fontSize: "12px", color: theme.muted, flexShrink: 0, marginLeft: "8px" }}>{v.cantidad} ped.</span>
+                      </div>
+                      <div style={{ height: "4px", background: theme.cardAlt, borderRadius: "99px" }}>
+                        <div style={{ height: "100%", width: `${(v.total / (topVendedores[0]?.total || 1)) * 100}%`, background: esMio ? "#D72638" : COLORS[i], borderRadius: "99px" }} />
+                      </div>
+                      <span style={{ fontSize: "11px", color: theme.muted }}>${v.total.toLocaleString("es-CO")}</span>
                     </div>
-                    <div style={{ height: "4px", background: theme.cardAlt, borderRadius: "99px" }}>
-                      <div style={{ height: "100%", width: `${(v.total / (topVendedores[0]?.total || 1)) * 100}%`, background: i === 0 ? "#D72638" : COLORS[i], borderRadius: "99px" }} />
-                    </div>
-                    <span style={{ fontSize: "11px", color: theme.muted }}>${v.total.toLocaleString("es-CO")}</span>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Top productos — dona */}
+      {/* ── FILA INFERIOR ── */}
+      <div className="dash-bot">
+
+        {/* Top productos */}
         <div style={card}>
-          <p style={sectionTitle}>🥧 Top productos del mes</p>
+          <p style={sectionTitle}>🥧 {isAdmin ? "Top productos del mes" : "Mis top productos"}</p>
           {topProductos.length === 0 ? (
             <p style={{ color: theme.muted, fontSize: "13px" }}>Sin datos este mes</p>
           ) : (
@@ -340,31 +440,10 @@ export default function DashboardPage() {
             </>
           )}
         </div>
-      </div>
-
-      {/* ── FILA INFERIOR ── */}
-      <div className="dash-bot">
-
-        {/* Pedidos por día — barras */}
-        <div style={card}>
-          <p style={sectionTitle}>📊 Pedidos — últimos 30 días</p>
-          {diasData.every(d => d.pedidos === 0) ? (
-            <p style={{ color: theme.muted, fontSize: "13px" }}>Sin pedidos en este período</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={diasData} margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
-                <XAxis dataKey="dia" tick={{ fontSize: 10, fill: theme.muted }} tickLine={false} axisLine={false} interval={4} />
-                <YAxis tick={{ fontSize: 10, fill: theme.muted }} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip content={<CustomTooltipBar />} cursor={{ fill: theme.cardAlt }} />
-                <Bar dataKey="pedidos" fill="#D72638" radius={[4, 4, 0, 0]} maxBarSize={20} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
 
         {/* Top tiendas */}
         <div style={card}>
-          <p style={sectionTitle}>🏪 Top tiendas del mes</p>
+          <p style={sectionTitle}>🏪 {isAdmin ? "Top tiendas del mes" : "Mis top tiendas"}</p>
           {topTiendas.length === 0 ? (
             <p style={{ color: theme.muted, fontSize: "13px" }}>Sin datos</p>
           ) : (
@@ -384,7 +463,7 @@ export default function DashboardPage() {
 
         {/* Últimos pedidos */}
         <div style={card}>
-          <p style={sectionTitle}>🕐 Últimos pedidos</p>
+          <p style={sectionTitle}>🕐 {isAdmin ? "Últimos pedidos" : "Mis últimos pedidos"}</p>
           {recientes.length === 0 ? (
             <p style={{ color: theme.muted, fontSize: "13px" }}>Sin pedidos recientes</p>
           ) : (

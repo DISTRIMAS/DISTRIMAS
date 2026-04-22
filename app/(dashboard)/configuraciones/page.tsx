@@ -155,13 +155,13 @@ export default function ConfiguracionesPage() {
             <p style={{ fontSize: "12px", fontWeight: 600, color: theme.muted, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Formato del mensaje que se enviará</p>
             <pre style={{ fontSize: "12px", color: theme.muted, margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.6, fontFamily: "monospace" }}>{`🏪 PEDIDO - ${form.nombre_empresa || "Empresa"}
 
-📋 Cliente: [Nombre tienda]
+📋 Cliente: [Nombre tienda] · Cód: [Código]
 📍 Municipio: [Ciudad]
 👤 Vendedor: [Nombre]
 📅 Fecha: [Fecha]
 
 PRODUCTOS:
-• [Producto] x[cant] - $[precio] = $[subtotal]
+• [COD] [Producto] x[cant] - $[precio] = $[subtotal]
 ...
 
 💰 TOTAL: $[total]`}</pre>

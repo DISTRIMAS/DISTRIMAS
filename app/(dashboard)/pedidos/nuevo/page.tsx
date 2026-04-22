@@ -146,11 +146,11 @@ export default function NuevoPedidoPage() {
       const ahora   = new Date()
       const fecha   = ahora.toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric", timeZone: "America/Bogota" })
       const hora    = ahora.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", timeZone: "America/Bogota" })
-      const lineas  = items.map(i => `• ${i.producto.nombre} x${i.cantidad} - $${i.precio_unitario.toLocaleString("es-CO")} = $${(i.cantidad * i.precio_unitario).toLocaleString("es-CO")}`).join("\n")
+      const lineas  = items.map(i => `• [${i.producto.codigo}] ${i.producto.nombre} x${i.cantidad} - $${i.precio_unitario.toLocaleString("es-CO")} = $${(i.cantidad * i.precio_unitario).toLocaleString("es-CO")}`).join("\n")
       const msg = [
         `🏪 *PEDIDO - ${config.nombre_empresa}*`,
         ``,
-        `📋 *Cliente:* ${cliente?.nombre || ""}`,
+        `📋 *Cliente:* ${cliente?.nombre || ""} · Cód: ${cliente?.codigo || ""}`,
         `📍 *Municipio:* ${cliente?.municipio || ""}`,
         `👤 *Vendedor:* ${user?.nombre || ""}`,
         `📅 *Fecha:* ${fecha} · ${hora}`,
